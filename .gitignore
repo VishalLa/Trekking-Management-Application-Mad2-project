@@ -1,0 +1,37 @@
+# Ignore backend parts
+__pycache__/
+/__pycache__
+*.pyc 
+
+# Ignore virtual environment
+myenv/
+/myenv
+.venv/
+/.venv
+
+# Ignore other temporary files 
+*.log
+*.tmp 
+.DS_Store 
+
+
+# Ignore db_directory 
+db_directory/
+/db_directory
+/db
+db/
+
+.idea/
+/.idea
+
+# Ignore test files
+test.py
+test.html
+
+# Environment files
+.env
+*.env
+
+# Ignore frontend parts
+node_modules/
+/node_modules
