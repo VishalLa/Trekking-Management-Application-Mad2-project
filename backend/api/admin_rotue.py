@@ -5,14 +5,14 @@ from auth.auth import role_required
 admin_bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 
 
-@admin_bp.route("/staff/<string:user_id>/blacklist", methods=["PUT"])
+@admin_bp.route("/user/<string:user_id>/blacklist", methods=["PUT"])
 @role_required("Admin")
 def blacklist_staff(user_id):
     try:
-        ManageStaff.change_status(user_id=user_id, status=False)
+        ManageUser.change_status(user_id=user_id, is_active=False)
 
         return jsonify({
-            "message": f"staff with: {user_id} blacklisted"
+            "message": f"user with: {user_id} blacklisted"
         }), 200
     
     except ValueError as e:
@@ -21,14 +21,14 @@ def blacklist_staff(user_id):
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-@admin_bp.route("/staff/<string:user_id>/unblacklist", methods=["PUT"])
+@admin_bp.route("/user/<string:user_id>/unblacklist", methods=["PUT"])
 @role_required("Admin")
 def unblacklist_staff(user_id):
     try:
-        ManageStaff.change_status(user_id=user_id, status=True)
+        ManageUser.change_status(user_id=user_id, is_active=True)
 
         return jsonify({
-            "message": f"staff with: {user_id} unblacklisted"
+            "message": f"user with: {user_id} unblacklisted"
         }), 200
     
     except ValueError as e:
@@ -74,7 +74,7 @@ def delete_staff(user_id):
 def create_trek():
     data = request.get_json()
 
-    if not all(k in data for k in ("trek_name", "location", "duration", "available_slots", "status", "start_date", "end_date")):
+    if not all(k in data for k in ("trek_name", "location", "duration", "available_slots", "status", "difficulty", "start_date", "end_date")):
         return jsonify({"error": "Missing required fields"}), 400
     
     try:
@@ -108,8 +108,8 @@ def delete_trek(trek_id):
         return jsonify({"error": "Internal Server Error"}), 500
     
 
-@admin_bp.record("/trek/<string:trek_id>/<string:status>", methods=["PUT"])
-@admin_bp("Admin")
+@admin_bp.route("/trek/<string:trek_id>/<string:status>", methods=["PUT"])
+@role_required("Admin")
 def change_status(trek_id, status):
     try:
         ManageTrek.change_status(trek_id=trek_id, status=status)

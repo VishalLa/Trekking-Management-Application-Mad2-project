@@ -1,4 +1,6 @@
-import os 
+import os
+from datetime import datetime 
+import pytz
 
 def load_env(filepath: str):
     try:
@@ -16,3 +18,11 @@ def load_env(filepath: str):
                     os.environ[key] = value 
     except FileNotFoundError:
         print(f"Warning: {filepath} not found.")
+
+
+def IndiaTimeStampNow():
+    """
+    Returns the current datetime object in India (Asia/Kolkata)
+    """
+    IST = pytz.timezone('Asia/Kolkata')
+    return datetime.now(IST)

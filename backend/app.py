@@ -8,11 +8,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from core.config import LocalDevelopmentConfig, Config
-from database.model import User 
+from database.model import User, Role
 from database.base import Base
 
 from api import admin_rotue
-from auth import register, auth
+from auth import auth
 
 LOG_FORMAT = Config.LOG_FORMAT
 LOG_FILE = Config.LOG_FILE
@@ -44,16 +44,19 @@ def init_db():
     print("Database tables created successfully!")
 
     with Session(engine) as session:
-        admin_exists = session.query(User).filter_by(role="Admin").first()
+        admin_exists = session.query(User).filter_by(role=Role.ADMIN).first()
 
         if not admin_exists:
             print("No admin found. Creating default admin...")
-            
+
             default_admin = User(
-                role="Admin",
-                email="admin@tma.com"
+                role=Role.ADMIN,
+                email="admin@tma.com",
+                first_name="Super",
+                last_name="Admin",
+                phone_no="0000000000",
+                password="Admin@1234"
             )
-            default_admin.set_password("Admin@1234")
             
             session.add(default_admin)
             session.commit()
@@ -66,12 +69,11 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(LocalDevelopmentConfig)
 
-    app.register_blueprint(auth.login_bp)
-    app.register_blueprint(register.auth_bp)
+    app.register_blueprint(auth.auth_bp)
     app.register_blueprint(admin_rotue.admin_bp)
 
-    app.config["JWT_SECRET_KEY"] = "your-super-secret-capstone-key"
-    jwt = JWTManager(app)
+    app.config["JWT_SECRET_KEY"] = Config.JWT_SECRET_KEY
+    _ = JWTManager(app)
 
     with app.app_context():
         init_db()
@@ -80,7 +82,7 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    @app.route("/")
-    def home(): 
-        return "Hello"
+    # @app.route("/")
+    # def home(): 
+    #     return "Hello"
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)  
