@@ -5,7 +5,8 @@ from core.security import (
     generate_6_digit_otp, 
     generate_password_reset_token, 
     verify_stateless_otp_token, 
-    verify_password
+    verify_password,
+    verify_password_reset_token
 )
 
 
@@ -26,6 +27,27 @@ class PasswordResetService:
 
         # TODO: Send actual email via celery
         print(f"📧 EMAIL SENT TO {user.email}: Click to reset password: {reset_url}")
+        return True
+    
+
+    @staticmethod
+    def reset_with_email_token(token: str, new_password: str):
+        email = verify_password_reset_token(token)
+        
+        if not email:
+            raise ValueError("Invalid or expired reset token.")
+            
+        user = db.query(User).filter_by(email=email).first()
+        if not user:
+            raise ValueError("User not found.")
+            
+        user.set_password(new_password)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise Exception("Failed to reset password")
+            
         return True
     
 

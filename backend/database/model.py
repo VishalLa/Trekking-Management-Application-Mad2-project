@@ -5,7 +5,8 @@ from datetime import datetime
 from sqlalchemy import (
     Column,
     String, 
-    Integer, 
+    Integer,
+    Float, 
     Boolean,
     Date,
     DateTime,
@@ -121,7 +122,9 @@ class Trek(Base):
     available_slots = Column(Integer, nullable=False)
     
     status = Column(SQLEnum(TrekStatus), nullable=False, default=TrekStatus.PENDING)    
-    difficulty = Column(SQLEnum(TrekDifficulty), nullable=False)   
+    difficulty = Column(SQLEnum(TrekDifficulty), nullable=False) 
+
+    price = Column(Float, nullable=False, default=0.0)  
 
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
