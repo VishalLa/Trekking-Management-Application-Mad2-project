@@ -5,7 +5,9 @@ from service.admin_service import (
     ManageUser, 
     ListData,
     GlobalSearchService,
-    LocalService
+    LocalSearchService,
+    BookingService,
+    AssignedTrekService
 )
 from service.report_service import ReportService
 from auth.auth import role_required 
@@ -14,8 +16,8 @@ admin_bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 
 
 @admin_bp.route("/user/<string:user_id>/blacklist", methods=["PUT"])
-@role_required("Admin")
-def blacklist_staff(user_id):
+@role_required("ADMIN")
+def blacklist_user(user_id):
     try:
         ManageUser.change_status(user_id=user_id, is_active=False)
 
@@ -26,12 +28,12 @@ def blacklist_staff(user_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e: 
-        return jsonify({"error": "Internal Server Error"}), 500
+        return jsonify({"error": f"Internal Server Error"}), 500
 
 
 @admin_bp.route("/user/<string:user_id>/unblacklist", methods=["PUT"])
-@role_required("Admin")
-def unblacklist_staff(user_id):
+@role_required("ADMIN")
+def unblacklist_user(user_id):
     try:
         ManageUser.change_status(user_id=user_id, is_active=True)
 
@@ -46,7 +48,7 @@ def unblacklist_staff(user_id):
 
 
 @admin_bp.route("/staff/<string:user_id>/trek/<string:trek_id>/assign", methods=["PUT"])
-@role_required("Admin")
+@role_required("ADMIN")
 def assign_trek(user_id, trek_id):
     try:
         ManageStaff.assign_trek(staff_id=user_id, trek_id=trek_id)
@@ -62,7 +64,7 @@ def assign_trek(user_id, trek_id):
     
 
 @admin_bp.route("/staff/<string:user_id>/delete", methods=["DELETE"])
-@role_required("Admin")
+@role_required("ADMIN")
 def delete_staff(user_id):
     try:
         ManageStaff.delete_staff(staff_id=user_id)
@@ -78,11 +80,11 @@ def delete_staff(user_id):
     
 
 @admin_bp.route("/trek/create", methods=["POST"])
-@role_required("Admin")
+@role_required("ADMIN")
 def create_trek():
     data = request.get_json()
 
-    if not all(k in data for k in ("trek_name", "location", "duration", "available_slots", "status", "difficulty", "start_date", "end_date")):
+    if not all(k in data for k in ("trek_name", "location", "duration", "available_slots", "difficulty", "start_date", "end_date")):
         return jsonify({"error": "Missing required fields"}), 400
     
     try:
@@ -101,7 +103,7 @@ def create_trek():
     
 
 @admin_bp.route("/trek/<string:trek_id>/delete", methods=["DELETE"])
-@role_required("Admin")
+@role_required("ADMIN")
 def delete_trek(trek_id):
     try:
         ManageTrek.delete_trek(trek_id=trek_id)
@@ -117,7 +119,7 @@ def delete_trek(trek_id):
     
 
 @admin_bp.route("/trek/<string:trek_id>/<string:status>", methods=["PUT"])
-@role_required("Admin")
+@role_required("ADMIN")
 def change_status(trek_id, status):
     try:
         ManageTrek.change_status(trek_id=trek_id, status=status)
@@ -133,7 +135,7 @@ def change_status(trek_id, status):
     
 
 @admin_bp.route("/list-staff", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def get_all_staff():
     try:
         raw_staff_list = ListData.list_staffs()
@@ -157,11 +159,11 @@ def get_all_staff():
     except ValueError as e:
         return jsonify({"message": str(e)}), 200
     except Exception as e:
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": f"Internal server error"}), 500
 
 
 @admin_bp.route("/list-user", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def get_all_user():
     try: 
         raw_user_list = ListData.list_users()
@@ -174,20 +176,22 @@ def get_all_user():
                 "email": user.email,
                 "phone_no": user.phone_no,
                 "status": user.status.name,
-                "date_created": user.date_created
+                "date_created": user.date_created,
+                "role": user.role.name
             } for user in raw_user_list
         ]
 
         return jsonify(formatted_users), 200
 
     except ValueError as e:
-        return jsonify({"message": str(e)}), 200
+        return jsonify([]), 200
     except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error"}), 500
 
 
 @admin_bp.route("/list-trek", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def get_all_trek():
     try: 
         raw_trek_list = ListData.list_trek()
@@ -199,10 +203,11 @@ def get_all_trek():
                 "location": trek.location,
                 "duration": trek.duration,
                 "available_slots": trek.available_slots,
-                "status": trek.status,
-                "difficulty": trek.difficulty,
+                "status": trek.status.name,
+                "difficulty": trek.difficulty.name,
                 "start_date": trek.start_date,
-                "end_date": trek.end_date
+                "end_date": trek.end_date,
+                "price": trek.price
             } for trek in raw_trek_list
         ]
 
@@ -211,11 +216,12 @@ def get_all_trek():
     except ValueError as e:
         return jsonify({"message": str(e)}), 200
     except Exception as e:
+        print(e)
         return jsonify({"error": "Internal server error"}), 500
             
 
 @admin_bp.route("/search", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def global_search():
     query = request.args.get("q", "").strip()
 
@@ -235,7 +241,7 @@ def global_search():
     
 
 @admin_bp.route("/search-trekker", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def search_trekker():
     query = request.args.get("q", "").strip()
 
@@ -243,7 +249,7 @@ def search_trekker():
         return jsonify({"error": "Please provide a search term using the '?q=' parameter."}), 400
     
     try:
-        results = LocalService.search_user(query=query, role="trekker")
+        results = LocalSearchService.search_user(query=query, role="trekker")
         
         if not any(results.values()):
             return jsonify({"message": "No results found."}), 404
@@ -255,7 +261,7 @@ def search_trekker():
             
 
 @admin_bp.route("/search-staff", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def search_staff():
     query = request.args.get("q", "").strip()
 
@@ -263,7 +269,7 @@ def search_staff():
         return jsonify({"error": "Please provide a search term using the '?q=' parameter."}), 400
     
     try:
-        results = LocalService.search_user(query=query, role="staff")
+        results = LocalSearchService.search_user(query=query, role="staff")
         
         if not any(results.values()):
             return jsonify({"message": "No results found."}), 404
@@ -275,7 +281,7 @@ def search_staff():
             
     
 @admin_bp.route("/search-booking", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def search_booking():
     query = request.args.get("q", "").strip()
 
@@ -283,7 +289,7 @@ def search_booking():
         return jsonify({"error": "Please provide a search term using the '?q=' parameter."}), 400
     
     try:
-        results = LocalService.search_booking(query=query)
+        results = LocalSearchService.search_booking(query=query)
         
         if not any(results.values()):
             return jsonify({"message": "No results found."}), 404
@@ -295,7 +301,7 @@ def search_booking():
             
 
 @admin_bp.route("/search-trek", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def search_trek():
     query = request.args.get("q", "").strip()
 
@@ -303,7 +309,7 @@ def search_trek():
         return jsonify({"error": "Please provide a search term using the '?q=' parameter."}), 400
     
     try:
-        results = LocalService.search_trek(query=query)
+        results = LocalSearchService.search_trek(query=query)
         
         if not any(results.values()):
             return jsonify({"message": "No results found."}), 404
@@ -315,7 +321,7 @@ def search_trek():
 
 
 @admin_bp.route("/reports/dashboard", methods=["GET"])
-@role_required("Admin")
+@role_required("ADMIN")
 def get_dashboard_reports():
     try:
         report_data = ReportService.get_dashboard_stats()
@@ -324,3 +330,79 @@ def get_dashboard_reports():
     except Exception as e:
         print(f"Report Generation Error: {e}")
         return jsonify({"error": "Failed to generate reports."}), 500
+    
+
+@admin_bp.route("/booking/<string:trek_id>", methods=["GET"])
+@role_required("ADMIN")
+def get_trek_specific_booking(trek_id: str):
+    try:
+        booking_list = BookingService.get_trek_specific_booking(trek_id=trek_id)
+
+        formated_booking_data = [
+            {
+                "booking_id": booking.booking_id,
+                "user_name": f"{booking.user.first_name} {booking.user.last_name}",
+                "email": booking.user.email,
+                "booking_date": booking.booking_date.strftime("%Y-%m-%d"), 
+                "status": booking.status.value,
+                "number_of_booking": booking.number_of_booking,
+                "payment_status": booking.payment_status
+            }
+            for booking in booking_list
+        ]
+
+        return jsonify(formated_booking_data), 200
+
+    except Exception as e:
+        print(f"Booking Error: {e}")
+        return jsonify({"error": f"An error occurred while fetching booking for trek: {trek_id}"}), 500
+    
+
+@admin_bp.route("/staff/<string:user_id>/treks", methods=["GET"])
+@role_required("ADMIN")
+def get_assigned_trek(user_id):
+    try:
+        assigned_trek_list = AssignedTrekService.get_assigned_trek(staff_id=user_id)
+
+        formated_trek_list = [
+            {
+                "trek_name": trek.trek_name,
+                "location": trek.location,
+                "duration": trek.duration,
+                "difficulty": trek.difficulty.name,
+                "start_date": trek.start_date,
+                "end_date": trek.end_date
+            }
+            for trek in assigned_trek_list
+        ]
+
+        return formated_trek_list, 200
+
+    except Exception as e:
+        return jsonify({"error": f"An error occured while fetching assigned treks for staff: {user_id}"}), 500
+
+
+@admin_bp.route("/trek/<string:trek_id>/staff", methods=["GET"])
+@role_required("ADMIN")
+def trek_assigned_staff(trek_id):
+    try:
+        assigned_staff_list = AssignedTrekService.get_assigned_staff(trek_id=trek_id)
+
+        formated_staff = [
+            {
+                "user_id": staff.user_id,
+                "first_name": staff.user_account.first_name,
+                "last_name": staff.user_account.last_name,
+                "email": staff.user_account.email,
+                "phone_no": staff.user_account.phone_no,
+                "experience": staff.experience,
+                "status": staff.user_account.status.value
+            }
+            for staff in assigned_staff_list
+        ]
+
+        return jsonify(formated_staff), 200
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": f"An error occured while fetching assigned staff for trek: {trek_id}"}), 500

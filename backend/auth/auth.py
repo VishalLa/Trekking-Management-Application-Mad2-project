@@ -11,7 +11,7 @@ from functools import wraps
 
 from datetime import timedelta
 
-auth_bp = Blueprint("login_controller", __name__)
+auth_bp = Blueprint("auth", __name__)
 
 
 # Manages login session
@@ -33,6 +33,7 @@ def login():
     additional_claims = {"role": user.role.name}
 
     # admin only have small expration time user and staff will have a 24 hour of expration time
+    custom_expiration = None
     if user.role == Role.ADMIN:
         custom_expiration = timedelta(hours=2)
     else:
@@ -41,7 +42,7 @@ def login():
     access_token = create_access_token(
         identity=user.id,
         additional_claims=additional_claims,
-        custom_expiration=custom_expiration
+        expires_delta=custom_expiration
     )
 
     return jsonify({
@@ -63,7 +64,7 @@ def role_required(required_role):
 
             if claims.get("role") != required_role:
                 return jsonify(
-                    {"message": f"Access forbidden: {required_role}role required."}
+                    {"message": f"Access forbidden: {required_role} role required."}
                 ), 403
             
             return fn(*args, **kwargs)
@@ -97,7 +98,7 @@ def register_trekker():
 
 # only admin can create staff
 @auth_bp.route("/auth/register/staff", methods=["POST"])
-@role_required("Admin")
+@role_required("ADMIN")
 def register_staff():
     data = request.get_json()
 

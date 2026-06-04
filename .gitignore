@@ -28,6 +28,7 @@ db/
 test.py
 test.html
 test.vue
+test.js
 
 # Environment files
 .env

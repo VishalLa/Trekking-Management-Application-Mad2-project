@@ -7,10 +7,13 @@ from database.model import (
     TrekStatus, 
     TrekDifficulty,
     Role,
-    Booking
+    Booking,
+    BookingStatus
 )
 from sqlalchemy import or_, cast, String
+from datetime import datetime
 from .helper import validate_date_format
+from .email_service import send_active_email, send_suspension_email, send_trek_cancellation_email 
 
 
 class ManageStaff:
@@ -31,6 +34,14 @@ class ManageStaff:
         if trek in staff.assigned_treks:
             raise ValueError("This trek is already assigned to this staff member.")
         
+
+        for assigned_trek in staff.assigned_treks:
+            if trek.start_date <= assigned_trek.end_date and trek.end_date >= assigned_trek.start_date:
+                raise ValueError(
+                    f"Schedule conflict: Staff is already assigned to '{assigned_trek.trek_name}' "
+                    f"({assigned_trek.start_date} to {assigned_trek.end_date})."
+                )
+        
         staff.assigned_treks.append(trek)
 
         try:
@@ -44,7 +55,8 @@ class ManageStaff:
 
     @staticmethod
     def delete_staff(staff_id: str):
-        staff = db.query(StaffProfile).filter_by(user_id=staff_id).first()
+        staff = db.query(User).filter_by(id=staff_id).first()
+
         if not staff:
             raise ValueError(f"Staff with user id: {staff_id} not found!")
         
@@ -69,6 +81,14 @@ class ManageTrek:
             difficulty = TrekDifficulty[data["difficulty"].upper()]
         except KeyError:
             raise ValueError(f"Invalid difficulty provided: {data['difficulty']}, Must be one of these EASY, MEDIUM, HARD")
+        
+        start_date = datetime.strptime(data["start_date"], "%Y-%m-%d")
+        end_date = datetime.strptime(data["end_date"], "%Y-%m-%d")
+
+        calculated_duration = (end_date - start_date).days + 1
+
+        if calculated_duration != int(data["duration"]):
+            raise ValueError(f"Invalid duration: Dates span {calculated_duration} days, but you entered {data['duration']}.")
         
         new_trek = Trek(
             trek_name=data["trek_name"],
@@ -100,11 +120,30 @@ class ManageTrek:
             raise ValueError(f"Trek with id: {trek_id} not found!")
         
         try:
+            if trek.status != TrekStatus.COMPLETE:
+
+                active_bookings = [b for b in trek.bookings if b.status == BookingStatus.BOOKED]
+
+                for booking in active_bookings:
+                    refund_total = trek.price * booking.number_of_booking
+
+                    send_trek_cancellation_email(
+                        user_email=booking.user.email,
+                        user_name=booking.user.first_name,
+                        trek_name=trek.trek_name,
+                        refund_amount=refund_total
+                    )
+            
+            for booking in trek.bookings:
+                db.delete(booking)
+
             db.delete(trek)
             db.commit()
-        except Exception:
+
+        except Exception as e:
             db.rollback()
-            raise Exception("Database transaction failed")
+            print(e)
+            raise Exception(f"Database transaction failed")
         
 
     @staticmethod
@@ -135,12 +174,39 @@ class ManageUser:
         is_active: bool,
         user_id: str
     ):
-        user = db.query(User).filter_by(user_id=user_id).first()
+        user = db.query(User).filter_by(id=user_id).first()
+
         if not user:
-            raise ValueError(f"Trekker / Staff with user id: {user_id} not found!")
+            raise ValueError(f"Trekker with user id: {user_id} not found!")
         
         new_status = Status.ACTIVE if is_active else Status.SUSPENDED
         user.status = new_status
+
+        if new_status == Status.SUSPENDED:
+            if user.role == Role.TREKKER and user.trekker_profile:
+                active_booking = db.query(Booking).filter(
+                    Booking.user_id == user.id, 
+                    Booking.status == BookingStatus.BOOKED
+                ).all()
+
+                cancelled_count = 0
+                for booking in active_booking:
+                    booking.status = BookingStatus.CANCELLED
+                    cancelled_count += 1
+
+                send_suspension_email(user.email, user.first_name)
+
+            elif user.role == Role.STAFF and user.staff_profile:
+                user.staff_profile.assigned_treks.clear()
+                send_suspension_email(user.email, user.first_name)
+
+
+        elif new_status == Status.ACTIVE:
+            if user.role == Role.TREKKER:
+                send_active_email(user.email, user.first_name)
+            elif user.role == Role.STAFF and user.staff_profile:
+                send_active_email(user.email, user.first_name)
+            
 
         try: 
             db.commit()
@@ -266,7 +332,7 @@ class GlobalSearchService:
         }
     
 
-class LocalService:
+class LocalSearchService:
 
     @staticmethod
     def search_trek(query: str):
@@ -358,3 +424,38 @@ class LocalService:
                 } for b in bookings
             ]
         }
+
+
+class BookingService:
+
+    @staticmethod
+    def get_trek_specific_booking(trek_id: str):
+        trek_booking = db.query(Booking).filter(Booking.trek_id == trek_id).all()
+
+        # if not trek_booking:
+        #     raise ValueError(f"No booking for {trek_id} found")
+
+        return trek_booking
+
+
+class AssignedTrekService:
+    
+    @staticmethod
+    def get_assigned_trek(staff_id: str):
+        staff = db.query(StaffProfile).filter_by(user_id=staff_id).first()
+        
+        if not staff:
+            raise ValueError("Staff member not found.")
+        
+        return staff.assigned_treks
+    
+
+    @staticmethod
+    def get_assigned_staff(trek_id: str):
+        trek = db.query(Trek).filter_by(trek_id=trek_id).first()
+
+        if not trek:
+            raise ValueError("Trek Not found")
+        
+        return trek.assigned_staff
+    

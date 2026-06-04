@@ -145,7 +145,7 @@ class Booking(Base):
     
     booking_date = Column(Date, nullable=False)
     status = Column(SQLEnum(BookingStatus), nullable=False)
-    number_of_booking = Column(Integer, nullable=False)
+    number_of_booking = Column(Integer, nullable=False, default=0)
     payment_status = Column(Boolean, nullable=False, default=False)
 
     user = relationship("User", back_populates="bookings")
