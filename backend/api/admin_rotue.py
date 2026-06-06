@@ -9,6 +9,7 @@ from service.admin_service import (
     BookingService,
     AssignedTrekService
 )
+import service.trek_service as trek_service
 from service.report_service import ReportService
 from auth.auth import role_required 
 
@@ -122,7 +123,7 @@ def delete_trek(trek_id):
 @role_required("ADMIN")
 def change_status(trek_id, status):
     try:
-        ManageTrek.change_status(trek_id=trek_id, status=status)
+        trek_service.ManageTrek.change_status(trek_id=trek_id, status=status)
 
         return jsonify({
             "message": f"trek with: {trek_id} change status: {status}"
