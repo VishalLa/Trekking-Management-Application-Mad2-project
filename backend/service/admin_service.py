@@ -13,7 +13,7 @@ from database.model import (
 from sqlalchemy import or_, cast, String
 from datetime import datetime
 from .helper import validate_date_format
-from .email_service import send_active_email, send_suspension_email, send_trek_cancellation_email 
+from tasks.email_service import send_active_email, send_suspension_email, send_trek_cancellation_email 
 
 
 class ManageStaff:
@@ -145,6 +145,34 @@ class ManageTrek:
             print(e)
             raise Exception(f"Database transaction failed")
         
+    
+    @staticmethod
+    def update_trek_details(data: str, trek_id: str):
+        
+        trek = db.query(Trek).filter_by(trek_id=trek_id).first()
+        if not trek:
+            raise ValueError(f"No trek with: {trek_id} found in database")
+        
+        if data.get("start_date") and data.get("end_date"):
+            start = validate_date_format(data["start_date"])
+            end = validate_date_format(data["end_date"])
+            
+            trek.start_date = start
+            trek.end_date = end
+            trek.duration = (end - start).days + 1
+
+        if data["price"] != "":
+            trek.price = float(data["price"])
+        if data["description"] != "":
+            trek.description = data["description"]
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise Exception("Database transaction failed")
+
+        
 
 class ManageUser:
     @staticmethod
@@ -172,18 +200,18 @@ class ManageUser:
                     booking.status = BookingStatus.CANCELLED
                     cancelled_count += 1
 
-                send_suspension_email(user.email, user.first_name)
+                send_suspension_email(user_email=user.email, user_name=user.first_name)
 
             elif user.role == Role.STAFF and user.staff_profile:
                 user.staff_profile.assigned_treks.clear()
-                send_suspension_email(user.email, user.first_name)
+                send_suspension_email(user_email=user.email, user_name=user.first_name)
 
 
         elif new_status == Status.ACTIVE:
             if user.role == Role.TREKKER:
-                send_active_email(user.email, user.first_name)
+                send_active_email(user_email=user.email, user_name=user.first_name)
             elif user.role == Role.STAFF and user.staff_profile:
-                send_active_email(user.email, user.first_name)
+                send_active_email(user_email=user.email, user_name=user.first_name)
             
 
         try: 

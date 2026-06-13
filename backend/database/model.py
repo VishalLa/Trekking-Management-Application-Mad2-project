@@ -130,6 +130,7 @@ class Trek(Base):
     end_date = Column(Date, nullable=False)
     
     date_created = Column(DateTime, default=lambda: IndiaTimeStampNow())
+    # updated_at = Column(DateTime, default=lambda: IndiaTimeStampNow())
     description = Column(Text, nullable=True)
     
     assigned_staff = relationship("StaffProfile", secondary=staff_trek_association, back_populates="assigned_treks")

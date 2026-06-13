@@ -56,10 +56,15 @@
             <StatusBadge :status="trek.difficulty" type="difficulty" />
             <StatusBadge :status="trek.status"     type="trek" />
 
-            <button v-if="trek.status === 'PENDING'"  class="action-btn btn-success" @click="updateStatus(trek, 'APPROVED')">Approve</button>
-            <button v-if="trek.status === 'APPROVED'" class="action-btn btn-success" @click="updateStatus(trek, 'OPEN')">Open</button>
-            <button v-if="trek.status === 'OPEN'"     class="action-btn btn-warning" @click="updateStatus(trek, 'CLOSED')">Close</button>
-            <button v-if="trek.status === 'CLOSED'"   class="action-btn btn-outline" @click="updateStatus(trek, 'COMPLETE')">Complete</button>
+            <select
+              class="action-select" :value="trek.status" @change="updateStatus(trek, $event.target.value)"
+            >
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approve</option>
+              <option value="OPEN">Open</option>
+              <option value="CLOSED">Close</option>
+              <option value="COMPLETE">Complete</option>
+            </select>
 
             <button
               class="action-btn btn-bookings"
@@ -327,6 +332,34 @@ export default {
 .btn-bookings.active { background: #f0faf4; border-color: #1a6b42; color: #1a6b42; font-weight: 600; }
 .booking-count-chip { background: #1a6b42; color: #fff; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 20px; min-width: 18px; text-align: center; }
 .btn-bookings:not(.active) .booking-count-chip { background: #e5e7eb; color: #4b5563; }
+
+.action-select { 
+  padding: 6px 30px 6px 12px; 
+  font-size: 13px; 
+  font-weight: 600; 
+  color: #374151; 
+  background-color: #ffffff;
+  border: 1px solid #dde1e7;
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: none; 
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+
+.action-select:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.action-select:focus {
+  border-color: #1a6b42;
+  box-shadow: 0 0 0 2px rgba(26, 107, 66, 0.1);
+}
 
 @media (max-width: 900px) {
   .list-card    { flex-direction: column; align-items: flex-start; }

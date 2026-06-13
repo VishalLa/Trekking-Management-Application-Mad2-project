@@ -1,3 +1,6 @@
+import os
+import multiprocessing
+
 import logging 
 import logging.handlers 
 
@@ -13,6 +16,8 @@ from database.base import Base
 
 from api import admin_rotue
 from auth import auth
+
+from celery_app import app as celery_app
 
 LOG_FORMAT = Config.LOG_FORMAT
 LOG_FILE = Config.LOG_FILE
@@ -65,6 +70,17 @@ def init_db():
             print("Admin account already exists. Skipping creation.")
 
 
+def run_celery_worker():
+    worker_args = ["worker", "--loglevel=info"]
+
+    if os.name == "nt":
+        worker_args.append("--pool=solo")
+        print("WARNING: Running on Windows. You must start Celery Beat in a separate terminal!")
+    else:
+        worker_args.append("-B")
+    
+    celery_app.worker_main(worker_args)
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(LocalDevelopmentConfig)
@@ -81,8 +97,10 @@ def create_app():
     return app
 
 if __name__ == '__main__':
+
+    celery_process = multiprocessing.Process(target=run_celery_worker)
+    celery_process.daemon = True
+    celery_process.start()
+
     app = create_app()
-    # @app.route("/")
-    # def home(): 
-    #     return "Hello"
-    app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=True)  
+    app.run(host='0.0.0.0', port=8000, debug=True, use_reloader=False)  

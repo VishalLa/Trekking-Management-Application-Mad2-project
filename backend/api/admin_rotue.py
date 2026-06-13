@@ -103,6 +103,27 @@ def create_trek():
         return jsonify({"error": "Internal Server Error"}), 500
     
 
+@admin_bp.route("/trek/update/<string:trek_id>", methods=["POST"])
+@role_required("ADMIN")
+def update_trek(trek_id: str):
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"error": "No update data provided"}), 400
+
+        ManageTrek.update_trek_details(data=data, trek_id=trek_id)
+
+        return jsonify({"message": "Trek updated successfully!"}), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+        
+    except Exception as e:
+        print(f"Error updating trek {trek_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route("/trek/<string:trek_id>/delete", methods=["DELETE"])
 @role_required("ADMIN")
 def delete_trek(trek_id):
