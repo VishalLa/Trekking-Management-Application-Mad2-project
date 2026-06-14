@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
+
 from service.admin_service import (
     ManageStaff,
     ManageTrek, 
@@ -11,7 +12,14 @@ from service.admin_service import (
 )
 import service.trek_service as trek_service
 from service.report_service import ReportService
+
 from auth.auth import role_required 
+
+from database.session import db_session as db 
+from database.model import BookingArchive
+
+from tasks.admin_tasks import generate_csv_task
+from celery_app import app
 
 admin_bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
 
@@ -428,3 +436,60 @@ def trek_assigned_staff(trek_id):
     except Exception as e:
         print(e)
         return jsonify({"error": f"An error occured while fetching assigned staff for trek: {trek_id}"}), 500
+
+
+@admin_bp.route("/export/bookings/trigger", methods=["POST"])
+@role_required("ADMIN")
+def trigger_export():
+    task = generate_csv_task.delay()
+    return jsonify({"task_id": task.id}), 202
+
+
+@admin_bp.route("/export/bookings/status/<task_id>", methods=["GET"])
+@role_required("ADMIN")
+def export_status(task_id):
+    # Ask Celery/Redis how this specific task is doing
+    task_result = app.AsyncResult(task_id)
+
+    if task_result.state == 'PENDING' or task_result.state == 'STARTED':
+        return jsonify({"status": "Processing..."}), 202
+    
+    elif task_result.state == "SUCCESS":
+        csv_data = task_result.result
+        output = Response(csv_data, mimetype="text/csv")
+        output.headers["Content-Disposition"] = "attachment; filename=Master_Booking_Report.csv"
+
+        return output
+    
+    else:
+        return jsonify({"error": "Task failed"}), 500
+
+
+@admin_bp.route("/bookings/archive", methods=["GET"])
+@role_required("ADMIN")
+def get_archived_bookings():
+    try: 
+        archives = db.query(BookingArchive).order_by(BookingArchive.archived_at.desc()).all()
+
+        data = []
+        for archive in archives:
+            user_name = f"{archive.user.first_name} {archive.user.last_name or ''}".strip() if archive.user else "Deleted User"
+            trek_name = archive.trek.trek_name if archive.trek else "Deleted Trek"
+
+            data.append({
+                "archive_id": archive.archive_id,
+                "user_name": user_name,
+                "user_email": archive.user.email if archive.user else "N/A",
+                "trek_name": trek_name,
+                "historical_start_date": archive.historical_start_date.strftime('%d %b %Y'),
+                "historical_end_date": archive.historical_end_date.strftime('%d %b %Y'),
+                "booking_date": archive.booking_date.strftime('%d %b %Y'),
+                "status": archive.status.name,
+                "seats": archive.number_of_booking,
+                "payment_status": "Paid" if archive.payment_status else "Pending"
+            })
+
+        return jsonify({"data": data}), 200
+            
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch archive history"}), 500

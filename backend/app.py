@@ -6,6 +6,7 @@ import logging.handlers
 
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -83,6 +84,7 @@ def run_celery_worker():
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, expose_headers=["Content-Disposition"])
     app.config.from_object(LocalDevelopmentConfig)
 
     app.register_blueprint(auth.auth_bp)

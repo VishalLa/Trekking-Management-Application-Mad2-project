@@ -5,49 +5,11 @@
       <div class="custom-modal">
         
         <div class="custom-modal-header">
-          <h3>Create New Trek</h3>
+          <h3>Update {{ trek ? trek.trek_name : 'Trek' }}</h3>
           <button class="custom-modal-close" @click="$emit('close')">✕</button>
         </div>
 
         <form @submit.prevent="submit" class="custom-modal-body">
-          <div class="form-row">
-            <div class="field">
-              <label>Trek Name *</label>
-              <input v-model="form.trek_name" type="text" placeholder="e.g. Himalayan Base Camp" required />
-            </div>
-            <div class="field">
-              <label>Location *</label>
-              <input v-model="form.location" type="text" placeholder="e.g. Himachal Pradesh" required />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="field">
-              <label>Duration (days) *</label>
-              <input v-model.number="form.duration" type="number" min="1" required />
-            </div>
-            <div class="field">
-              <label>Available Slots *</label>
-              <input v-model.number="form.available_slots" type="number" min="1" required />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="field">
-              <label>Price (₹) *</label>
-              <input v-model.number="form.price" type="number" min="0" step="0.01" required />
-            </div>
-            <div class="field">
-              <label>Difficulty *</label>
-              <select v-model="form.difficulty" required>
-                <option value="">Select…</option>
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
-              </select>
-            </div>
-          </div>
-
           <div class="form-row">
             <div class="field">
               <label>Start Date *</label>
@@ -56,6 +18,13 @@
             <div class="field">
               <label>End Date *</label>
               <input v-model="form.end_date" type="date" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field full">
+              <label>Price (₹) *</label>
+              <input v-model.number="form.price" type="number" min="0" step="0.01" required />
             </div>
           </div>
 
@@ -69,7 +38,7 @@
           <div class="custom-modal-footer">
             <button type="button" class="btn-cancel" @click="$emit('close')">Cancel</button>
             <button type="submit" class="btn-confirm" :disabled="loading">
-              {{ loading ? 'Creating…' : 'Create Trek' }}
+              {{ loading ? 'Updating…' : 'Update Trek' }}
             </button>
           </div>
         </form>
@@ -81,85 +50,94 @@
 
 <script>
 const emptyForm = () => ({
-  trek_name: '',
-  location: '',
-  duration: '', 
-  available_slots: '',
-  price: '', 
-  difficulty: '', 
-  start_date: '', 
-  end_date: '', 
-  description: ''
+    start_date: '',
+    end_date: '',
+    price: '',
+    description: ''
 })
 
 export default {
-  name: 'CreateTrekModal',
-  props: {
-    show: { type: Boolean, default: false }
-  },
-  emits: ['created', 'close'],
+    name: 'UpdateTrekModal',
+    props: {
+        show: { type: Boolean, default: false },
+        trek: { type: Object, default: null } 
+    },
 
-  data() {
-    return {
-      form: emptyForm(),
-      loading: false,
-      error: ''
-    }
-  },
+    emits: ['update', 'close'],
 
-  watch: {
-    show(val) {
-      console.debug('CreateTrekModal: show changed ->', val)
-      if (val) { this.form = emptyForm(); this.error = '' }
-    }
-  },
-
-  mounted() {
-    console.debug('CreateTrekModal mounted, initial show ->', this.show)
-  },
-
-  methods: {
-    token()   { return localStorage.getItem('tma_token') },
-    headers() { 
-      const t = this.token()
-
-      if (!t || t === 'null' || t === 'undefined') {
-        this.$router.push('/')
-        return {};
-      }
-      
-      return {
-        Authorization: `Bearer ${t}`, 
-        'Content-Type': 'application/json'
-      }
-     },
-
-    async submit() {
-      this.loading = true
-      this.error = ''
-
-      try {
-        const res = await fetch('/admin/trek/create', {
-          method: 'POST',
-          headers: this.headers(),
-          body: JSON.stringify(this.form)
-        })
-
-        if (!res.ok) {
-          const d = await res.json()
-          throw new Error(d.message || 'Creation failed')
+    data() {
+        return {
+            form: emptyForm(),
+            loading: false, 
+            error: ''
         }
-        this.$emit('created')
-        
-      } catch (e) {
-        this.error = e.message
-      } finally {
-        this.loading = false
-      }
-    }
-  }
+    },
+
+    watch: {
+        show(isShown) {
+            if (isShown && this.trek) {
+                this.form = {
+                    start_date: this.trek.start_date || '',
+                    end_date: this.trek.end_date || '',
+                    price: this.trek.price || '',
+                    description: this.trek.description || ''
+                }
+            } else {
+                this.form = emptyForm()
+                this.error = ''
+            }
+        }
+    },
+
+    methods: { 
+        token() { return localStorage.getItem('tma_token') },
+
+        header() {
+            const t = this.token()
+
+            if (!t || t === 'null' || t === 'undefined') {
+                this.$router.push('/')
+                return {}
+            }
+            
+            return {
+                Authorization: `Bearer ${t}`, 
+                'Content-Type': 'application/json'
+            }
+        },
+
+        async submit() {
+            if (!this.trek || !this.trek.trek_id) return
+
+            this.loading = true
+            this.error = ''
+
+            try {
+                const res = await fetch(`/admin/trek/update/${this.trek.trek_id}`, {
+                    method: 'POST',
+                    headers: this.header(),
+                    body: JSON.stringify(this.form)
+                })
+
+                const data = await res.json()
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to update trek')
+                }
+
+                this.$emit('update')
+                this.$emit('close')
+
+            } catch (err) {
+                this.error = err.message
+            } finally {
+                this.loading = false
+            }
+        }
+    } 
 }
 </script>
+
 
 <style scoped>
 .backdrop {
@@ -271,3 +249,4 @@ export default {
   .field.full { grid-column: span 1; }
 }
 </style>
+

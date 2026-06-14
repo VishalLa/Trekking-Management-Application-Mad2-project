@@ -155,3 +155,26 @@ class Booking(Base):
     __table_args__ = (
         UniqueConstraint('user_id', 'trek_id', name='_user_trek_uc'),
     )
+
+
+class BookingArchive(Base):
+    __tablename__ = "booking_archive"
+
+    archive_id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    original_booking_id = Column(String(36), nullable=False)
+
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    trek_id = Column(String(36), ForeignKey("trek.trek_id", ondelete="SET NULL"), index=True, nullable=True)
+
+    booking_date = Column(Date, nullable=False)
+    status = Column(SQLEnum(BookingStatus), nullable=False)
+    number_of_booking = Column(Integer, nullable=False)
+    payment_status = Column(Boolean, nullable=False)
+
+    historical_start_date = Column(Date, nullable=False)
+    historical_end_date = Column(Date, nullable=False)
+
+    archived_at = Column(DateTime, default=lambda: IndiaTimeStampNow())
+
+    user = relationship("User")
+    trek = relationship("Trek")

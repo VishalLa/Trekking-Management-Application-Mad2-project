@@ -13,7 +13,12 @@ from database.model import (
 from sqlalchemy import or_, cast, String
 from datetime import datetime
 from .helper import validate_date_format
-from tasks.email_service import send_active_email, send_suspension_email, send_trek_cancellation_email 
+from tasks.email_service import (
+    send_active_email,
+    send_suspension_email, 
+    send_trek_cancellation_email
+)
+from tasks.trek_task import archive_trek_bookings_task
 
 
 class ManageStaff:
@@ -152,6 +157,15 @@ class ManageTrek:
         trek = db.query(Trek).filter_by(trek_id=trek_id).first()
         if not trek:
             raise ValueError(f"No trek with: {trek_id} found in database")
+        
+        if trek.status in [TrekStatus.COMPLETE, TrekStatus.CLOSED]:
+            archive_trek_bookings_task.delay(
+                trek_id=trek.trek_id,
+                old_start_date=trek.start_date.strftime('%Y-%m-%d'),
+                old_end_date=trek.end_date.strftime('%Y-%m-%d')
+            )
+
+            trek.status = TrekStatus.OPEN
         
         if data.get("start_date") and data.get("end_date"):
             start = validate_date_format(data["start_date"])

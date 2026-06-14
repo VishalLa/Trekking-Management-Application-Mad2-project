@@ -235,10 +235,10 @@ def info_about_new_trek(self, user_email: str, user_name: str, trek_name: str, l
             server.login(sender_email, sender_password)
             server.send_message(msg)
 
-        print(f"✅ NEW TREK ALERT EMAILED TO: {user_email} | TREK: {trek_name}")
+        print(f"NEW TREK ALERT EMAILED TO: {user_email} | TREK: {trek_name}")
         return "Success"
 
     except Exception as exc:
-        print(f"❌ Failed to send new trek alert to {user_email}: {exc}")
+        print(f"Failed to send new trek alert to {user_email}: {exc}")
         raise self.retry(exc=exc, countdown=60)
     

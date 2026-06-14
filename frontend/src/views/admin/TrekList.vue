@@ -88,6 +88,8 @@
               </span>
             </button>
 
+            <button class="action-btn btn-outline" @click="openUpdate(trek)">Update</button>
+
             <button class="action-btn btn-danger-outline" @click="askDelete(trek)">Delete</button>
           </div>
         </div>
@@ -107,7 +109,19 @@
       </div>
     </div>
 
-    <CreateTrekModal :show="showCreate" @created="onCreated" @close="showCreate = false" />
+    <CreateTrekModal
+     :show="showCreate" 
+     @created="onCreated" 
+     @close="showCreate = false" 
+    />
+
+    <UpdateTrekModal 
+      :show="showUpdate" 
+      :trek="selectedTrek"
+      @update="load" 
+      @close="showUpdate = false" 
+    />
+
     <ConfirmModal
       :show="showConfirm"
       title="Delete Trek"
@@ -124,13 +138,14 @@
 import SearchBar         from '@/components/shared/SearchBar.vue'
 import StatusBadge       from '@/components/shared/StatusBadge.vue'
 import ConfirmModal      from '@/components/shared/ConfirmModal.vue'
+import UpdateTrekModal   from '@/components/admin/UpdateTrekModal.vue'
 import CreateTrekModal   from '@/components/admin/CreateTrekModal.vue'
 import BookingModal      from '@/components/admin/BookingModal.vue'
 import TrekAssignedStaff  from '@/components/admin/TrekAssignedStaff.vue'
 
 export default {
   name: 'TrekList',
-  components: { SearchBar, StatusBadge, ConfirmModal, CreateTrekModal, BookingModal, TrekAssignedStaff },
+  components: { SearchBar, StatusBadge, ConfirmModal, CreateTrekModal, UpdateTrekModal, BookingModal, TrekAssignedStaff },
 
   data() {
     return {
@@ -152,9 +167,11 @@ export default {
 
       showCreate: false,
       showConfirm: false,
+      showUpdate: false,
       deleteTarget: null,
       expandedId: null,
       activeTab: null,
+      selectedTrek: null,
 
       bookingCounts: {},    
       staffCounts: {},
@@ -179,6 +196,11 @@ export default {
   methods: {
     openCreate() {
       this.showCreate = true
+    },
+
+    openUpdate(trek) {
+      this.selectedTrek = trek;
+      this.showUpdate = true;
     },
 
     token()   { return localStorage.getItem('tma_token') },
