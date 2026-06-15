@@ -1,10 +1,9 @@
 <template>
   <div>
     <div class="section-header">
-      <h2 class="section-title">Trek List</h2>
+      <h2 class="section-title">My Assigned Treks</h2>
       <div class="header-right">
-        <SearchBar v-model="query" placeholder="Search by name or location…" />
-        <button class="primary-btn" @click="openCreate">+ Create Trek</button>
+        <SearchBar v-model="query" placeholder="Search my treks…" />
       </div>
     </div>
 
@@ -21,12 +20,12 @@
       </button>
     </div>
 
-    <p v-if="loading" class="state-msg">Loading treks…</p>
+    <p v-if="loading" class="state-msg">Loading your assigned treks…</p>
     <div v-else-if="error" class="state-error">
       {{ error }}
       <button @click="load" class="retry-link">Retry</button>
     </div>
-    <p v-else-if="filtered.length === 0" class="state-msg">No treks found.</p>
+    <p v-else-if="filtered.length === 0" class="state-msg">You have no treks assigned to you right now.</p>
 
     <div v-else>
       <div
@@ -35,7 +34,6 @@
         class="trek-block"
         :class="{ expanded: expandedId === trek.trek_id }"
       >
-
         <div class="list-card">
           <div class="card-body">
             <div class="card-name">{{ trek.trek_name }}</div>
@@ -44,9 +42,7 @@
               <span class="sep">·</span>
               <span>{{ trek.duration }} days</span>
               <span class="sep">·</span>
-              <span>₹ {{ formatPrice(trek.price) }}</span>
-              <span class="sep">·</span>
-              <span>{{ trek.available_slots }} slots</span>
+              <span style="font-weight: 600; color: #1a6b42;">🎟️ {{ trek.available_slots }} slots</span>
               <span class="sep">·</span>
               <span>{{ formatDate(trek.start_date) }} → {{ formatDate(trek.end_date) }}</span>
             </div>
@@ -54,128 +50,73 @@
 
           <div class="card-actions">
             <StatusBadge :status="trek.difficulty" type="difficulty" />
-            <StatusBadge :status="trek.status"     type="trek" />
+            <StatusBadge :status="trek.status" type="trek" />
 
             <select
-              class="action-select" :value="trek.status" @change="updateStatus(trek, $event.target.value)"
+              class="action-select" 
+              :value="trek.status" 
+              @change="updateStatus(trek, $event.target.value)"
             >
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approve</option>
               <option value="OPEN">Open</option>
               <option value="CLOSED">Close</option>
               <option value="COMPLETE">Complete</option>
             </select>
 
-            <button
-              class="action-btn btn-bookings"
-              :class="{ active: expandedId === trek.trek_id && activeTab === 'staff' }"
-              @click="togglePanel(trek.trek_id, 'staff')"
-            >
-              🧑‍🤝‍🧑 {{ expandedId === trek.trek_id && activeTab === 'staff' ? 'Hide Staff' : 'View Staff' }}
-              <span v-if="staffCounts[trek.trek_id] !== undefined" class="booking-count-chip">
-                {{ staffCounts[trek.trek_id] }}
-              </span>
+            <button class="action-btn btn-outline" @click="askUpdateSlots(trek)">
+               Edit Slots
             </button>
 
             <button
               class="action-btn btn-bookings"
-              :class="{ active: expandedId === trek.trek_id && activeTab === 'bookings' }"
-              @click="togglePanel(trek.trek_id, 'bookings')"
+              :class="{ active: expandedId === trek.trek_id }"
+              @click="togglePanel(trek.trek_id)"
             >
-              📅 {{ expandedId === trek.trek_id && activeTab === 'bookings' ? 'Hide Bookings' : 'View Bookings' }}
+              📅 {{ expandedId === trek.trek_id ? 'Hide Bookings' : 'View Bookings' }}
               <span v-if="bookingCounts[trek.trek_id] !== undefined" class="booking-count-chip">
                 {{ bookingCounts[trek.trek_id] }}
               </span>
             </button>
-
-            <button class="action-btn btn-outline" @click="openUpdate(trek)">Update</button>
-
-            <button class="action-btn btn-danger-outline" @click="askDelete(trek)">Delete</button>
           </div>
         </div>
 
         <BookingModal 
           v-if="expandedId === trek.trek_id" 
           :trek="trek"
-          role="ADMIN" 
+          role="STAFF" 
           @loaded="count => updateBookingCount(trek.trek_id, count)" 
-        />
-
-        <TrekAssignedStaff 
-          v-if="expandedId === trek.trek_id && activeTab === 'staff'" 
-          :trek="trek" 
-          @loaded="count => updateStaffCount(trek.trek_id, count)" 
         />
 
       </div>
     </div>
-
-    <CreateTrekModal
-     :show="showCreate" 
-     @created="onCreated" 
-     @close="showCreate = false" 
-    />
-
-    <UpdateTrekModal 
-      :show="showUpdate" 
-      :trek="selectedTrek"
-      @update="load" 
-      @close="showUpdate = false" 
-    />
-
-    <ConfirmModal
-      :show="showConfirm"
-      title="Delete Trek"
-      :message="`Delete '${deleteTarget?.trek_name}'? This cannot be undone.`"
-      confirm-label="Delete"
-      :danger="true"
-      @confirm="confirmDelete"
-      @cancel="showConfirm = false"
-    />
   </div>
 </template>
 
 <script>
-import SearchBar         from '@/components/shared/SearchBar.vue'
-import StatusBadge       from '@/components/shared/StatusBadge.vue'
-import ConfirmModal      from '@/components/shared/ConfirmModal.vue'
-import BookingModal      from '@/components/shared/BookingModal.vue'
-import UpdateTrekModal   from '@/components/admin/UpdateTrekModal.vue'
-import CreateTrekModal   from '@/components/admin/CreateTrekModal.vue'
-import TrekAssignedStaff  from '@/components/admin/TrekAssignedStaff.vue'
+import SearchBar     from '@/components/shared/SearchBar.vue'
+import StatusBadge   from '@/components/shared/StatusBadge.vue'
+import BookingModal  from '@/components/shared/BookingModal.vue'
 
 export default {
-  name: 'TrekList',
-  components: { SearchBar, StatusBadge, ConfirmModal, CreateTrekModal, UpdateTrekModal, BookingModal, TrekAssignedStaff },
+  name: 'StaffTrekList',
+  components: { SearchBar, StatusBadge, BookingModal },
 
   data() {
     return {
       treks: [],
       loading: false,
       error: null,
-
       query: '',
       statusFilter: 'ALL',
-
+      
       filters: [
-        { value: 'ALL',      label: 'All'              },
-        { value: 'PENDING',  label: 'Pending Approval' },
-        { value: 'APPROVED', label: 'Approved'         },
-        { value: 'OPEN',     label: 'Open'             },
-        { value: 'CLOSED',   label: 'Closed'           },
-        { value: 'COMPLETE', label: 'Completed'        },
+        { value: 'ALL',      label: 'All My Treks' },
+        { value: 'OPEN',     label: 'Open' },
+        { value: 'CLOSED',   label: 'Closed' },
+        { value: 'COMPLETE', label: 'Completed' },
       ],
 
-      showCreate: false,
-      showConfirm: false,
-      showUpdate: false,
-      deleteTarget: null,
       expandedId: null,
-      activeTab: null,
-      selectedTrek: null,
-
       bookingCounts: {},    
-      staffCounts: {},
     }
   },
 
@@ -195,25 +136,16 @@ export default {
   },
 
   methods: {
-    openCreate() {
-      this.showCreate = true
-    },
-
-    openUpdate(trek) {
-      this.selectedTrek = trek;
-      this.showUpdate = true;
-    },
-
-    token()   { return localStorage.getItem('tma_token') },
+    token() { return localStorage.getItem('tma_token') },
+    
+    userId() { return localStorage.getItem('user_id') }, 
 
     headers() { 
       const t = this.token();
-
-      if (!t || t === 'null' || t === 'undefined') {
+      if (!t) {
         this.$router.push('/')
         return {};
       }
-
       return {
         Authorization: `Bearer ${t}`, 
         'Content-Type': 'application/json'
@@ -225,23 +157,16 @@ export default {
       return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     },
 
-    formatPrice(price) {
-      if (!price) return '0';
-      return Number(price).toLocaleString('en-IN')
-    },
-
     countByStatus(status) {
       const list = Array.isArray(this.treks) ? this.treks : []
       return status === 'ALL' ? list.length : list.filter(t => t.status === status).length
     },
 
-    togglePanel(trekId, tabType) {
-      if (this.expandedId === trekId && this.activeTab === tabType) {
+    togglePanel(trekId) {
+      if (this.expandedId === trekId) {
         this.expandedId = null
-        this.activeTab = null
       } else {
         this.expandedId = trekId
-        this.activeTab = tabType
       }
     },
 
@@ -249,59 +174,68 @@ export default {
       this.bookingCounts[trekId] = count
     },
 
-    updateStaffCount(trekId, count) {
-      this.staffCounts[trekId] = count
-    },
-
     async load() {
-      this.loading = true; this.error = null
+      this.loading = true; 
+      this.error = null;
+
+      const uid = this.userId();
+      if (!uid) {
+          this.error = "User session invalid. Please log in again.";
+          this.loading = false;
+          return;
+      }
 
       try {
-        const res = await fetch('/admin/list-trek', { headers: this.headers() })
+        const res = await fetch(`/staff/assigned-trek-list/${uid}`, { headers: this.headers() })
 
         if (res.status === 401) { this.$router.push('/'); return }
         if (!res.ok) throw new Error(`Server error ${res.status}`)
 
         const payload = await res.json()
-        let list = payload.data || payload
+        this.treks = Array.isArray(payload) ? payload : (payload.data || [])
 
-        if (!Array.isArray(list)) {
-          console.debug('TrekList.load: expected array, got', list)
-          list = []
-        }
-
-        this.treks = list
-
-      } catch (e) { this.error = e.message } finally { this.loading = false }
+      } catch (e) { 
+        this.error = e.message 
+      } finally { 
+        this.loading = false 
+      }
     },
 
     async updateStatus(trek, status) {
       try {
-        const res = await fetch(`/admin/trek/${trek.trek_id}/${status}`, { method: 'PUT', headers: this.headers() })
+        const res = await fetch(`/staff/trek/${trek.trek_id}/${status}`, { 
+            method: 'PUT', 
+            headers: this.headers() 
+        })
         if (!res.ok) throw new Error('Status update failed')
         trek.status = status
-      } catch (e) { alert(e.message) }
+      } catch (e) { 
+          alert(e.message) 
+      }
     },
 
-    askDelete(trek) {
-      this.deleteTarget = trek; this.showConfirm = true
-    },
-
-    async confirmDelete() {
-      this.showConfirm = false
-      try {
-        const res = await fetch(`/admin/trek/${this.deleteTarget.trek_id}/delete`, { method: 'DELETE', headers: this.headers() })
-
-        if (!res.ok) throw new Error('Delete failed')
-        this.treks = this.treks.filter(t => t.trek_id !== this.deleteTarget.trek_id)
-
-        if (this.expandedId === this.deleteTarget.trek_id) this.expandedId = null
+    async askUpdateSlots(trek) {
+        const currentSlots = trek.available_slots;
+        const input = prompt(`Update available slots for ${trek.trek_name}:`, currentSlots);
         
-      } catch (e) { alert(e.message) }
-    },
+        if (input === null || input === "") return;
+        
+        const newSlots = parseInt(input, 10);
+        if (isNaN(newSlots) || newSlots < 0) {
+            alert("Please enter a valid number of slots.");
+            return;
+        }
 
-    onCreated() {
-      this.showCreate = false; this.load()
+        try {
+            const res = await fetch(`/staff/trek/${trek.trek_id}/slots/${newSlots}`, {
+                method: 'PUT',
+                headers: this.headers()
+            })
+            
+            trek.available_slots = newSlots;
+        } catch (e) {
+            alert(e.message)
+        }
     }
   },
 
@@ -313,9 +247,6 @@ export default {
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .section-title  { font-size: 16px; font-weight: 600; color: #121619; }
 .header-right   { display: flex; align-items: center; gap: 10px; }
-
-.primary-btn { padding: 8px 16px; background: #1a6b42; border: none; border-radius: 6px; color: #fff; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.12s; }
-.primary-btn:hover { background: #155a36; }
 
 .filter-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 .filter-tab { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #dde1e7; border-radius: 20px; background: #fff; font-family: 'IBM Plex Sans', sans-serif; font-size: 12.5px; color: #6b7280; cursor: pointer; transition: all 0.12s; }
@@ -341,14 +272,8 @@ export default {
 .card-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 
 .action-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 5px; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.12s; }
-.btn-success        { background: #1a6b42; border: 1px solid #1a6b42; color: #fff; }
-.btn-success:hover  { background: #155a36; }
-.btn-warning        { background: #d97706; border: 1px solid #d97706; color: #fff; }
-.btn-warning:hover  { background: #b45309; }
 .btn-outline        { background: #fff; border: 1px solid #dde1e7; color: #374151; }
 .btn-outline:hover  { background: #f4f5f7; }
-.btn-danger-outline { background: #fff; border: 1px solid #fca5a5; color: #dc2626; }
-.btn-danger-outline:hover { background: #fef2f2; }
 
 .btn-bookings { background: #fff; border: 1px solid #dde1e7; color: #374151; }
 .btn-bookings:hover { background: #f0faf4; border-color: #1a6b42; color: #1a6b42; }
@@ -373,16 +298,8 @@ export default {
   background-position: right 8px center;
   background-size: 14px;
 }
-
-.action-select:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
-}
-
-.action-select:focus {
-  border-color: #1a6b42;
-  box-shadow: 0 0 0 2px rgba(26, 107, 66, 0.1);
-}
+.action-select:hover { background-color: #f9fafb; border-color: #d1d5db; }
+.action-select:focus { border-color: #1a6b42; box-shadow: 0 0 0 2px rgba(26, 107, 66, 0.1); }
 
 @media (max-width: 900px) {
   .list-card    { flex-direction: column; align-items: flex-start; }

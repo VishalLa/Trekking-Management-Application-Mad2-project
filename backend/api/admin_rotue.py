@@ -1,16 +1,18 @@
 from flask import Blueprint, request, jsonify, Response
 
 from service.admin_service import (
-    ManageStaff,
-    ManageTrek, 
+    ManageStaff, 
     ManageUser, 
     ListData,
     GlobalSearchService,
     LocalSearchService,
-    BookingService,
-    AssignedTrekService
+    AssignedTrekService,
+    ManageTrek as AdminManageTrek
 )
-import service.trek_service as trek_service
+from service.trek_service import (
+    ManageTrek,
+    BookingService
+)
 from service.report_service import ReportService
 
 from auth.auth import role_required 
@@ -97,7 +99,7 @@ def create_trek():
         return jsonify({"error": "Missing required fields"}), 400
     
     try:
-        trek = ManageTrek.create_trek(data=data)
+        trek = AdminManageTrek.create_trek(data=data)
         
         return jsonify({
             "message": "Trek created successfuly",
@@ -120,7 +122,7 @@ def update_trek(trek_id: str):
         if not data:
             return jsonify({"error": "No update data provided"}), 400
 
-        ManageTrek.update_trek_details(data=data, trek_id=trek_id)
+        AdminManageTrek.update_trek_details(data=data, trek_id=trek_id)
 
         return jsonify({"message": "Trek updated successfully!"}), 200
 
@@ -136,7 +138,7 @@ def update_trek(trek_id: str):
 @role_required("ADMIN")
 def delete_trek(trek_id):
     try:
-        ManageTrek.delete_trek(trek_id=trek_id)
+        AdminManageTrek.delete_trek(trek_id=trek_id)
 
         return jsonify({
             "message": f"trek with: {trek_id} deleted"
@@ -152,7 +154,7 @@ def delete_trek(trek_id):
 @role_required("ADMIN")
 def change_status(trek_id, status):
     try:
-        trek_service.ManageTrek.change_status(trek_id=trek_id, status=status)
+        ManageTrek.change_status(trek_id=trek_id, status=status)
 
         return jsonify({
             "message": f"trek with: {trek_id} change status: {status}"

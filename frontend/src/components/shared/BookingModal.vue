@@ -68,6 +68,11 @@ export default {
     trek: {
       type: Object,
       required: true
+    },
+    role: {
+      type: String, 
+      default: 'ADMIN',
+      validator: (val) => ['ADMIN', 'STAFF'].includes(val.toUpperCase())
     }
   },
 
@@ -128,7 +133,8 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const res = await fetch(`/admin/booking/${this.trek.trek_id}`, { 
+        const urlPrefix = this.role.toUpperCase() === 'STAFF' ? '/staff' : '/admin'
+        const res = await fetch(`/${urlPrefix }/booking/${this.trek.trek_id}`, { 
           headers: this.headers() 
         })
 

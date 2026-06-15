@@ -120,7 +120,7 @@ export default {
                 this.errorMessage = ""
 
             try {
-                const result = await fetch("/login", {
+                const result = await fetch("/auth/login", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({email: this.form.email, password: this.form.password})
@@ -132,6 +132,11 @@ export default {
 
                 localStorage.setItem("tma_token", data.token || data.access_token)
                 localStorage.setItem("tma_role", data.role)
+                localStorage.setItem('user_id', data.user_id)
+
+                if (data.role === "ADMIN") this.$router.push('/dashboard')
+                if (data.role === "STAFF") this.$router.push('/staff')
+                // if (data.role === "TREKKER") this.$router.push('/trekker')
 
                 const map = {
                     ADMIN: '/dashboard',

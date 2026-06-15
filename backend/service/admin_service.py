@@ -180,13 +180,14 @@ class ManageTrek:
         if data["description"] != "":
             trek.description = data["description"]
 
+        trek.available_slots = int(data["available_slots"])
+
         try:
             db.commit()
         except Exception:
             db.rollback()
             raise Exception("Database transaction failed")
 
-        
 
 class ManageUser:
     @staticmethod
@@ -444,18 +445,6 @@ class LocalSearchService:
                 } for b in bookings
             ]
         }
-
-
-class BookingService:
-
-    @staticmethod
-    def get_trek_specific_booking(trek_id: str):
-        trek_booking = db.query(Booking).filter(Booking.trek_id == trek_id).all()
-
-        # if not trek_booking:
-        #     raise ValueError(f"No booking for {trek_id} found")
-
-        return trek_booking
 
 
 class AssignedTrekService:

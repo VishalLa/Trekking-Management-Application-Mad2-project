@@ -16,10 +16,18 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/login': 'http://localhost:8000',
-      '/api':   'http://localhost:8000',
-      '/admin': 'http://localhost:8000',
-      '/auth':  'http://localhost:8000'
-    }
-  }
+      '^/(login|admin|staff|auth)': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        
+        rewrite: (path) => '/api' + path,
+        
+        bypass(req) {
+          if (req.headers.accept && req.headers.accept.includes('text/html')) {
+            return req.url;
+          }
+        }
+      } 
+    } 
+  } 
 })

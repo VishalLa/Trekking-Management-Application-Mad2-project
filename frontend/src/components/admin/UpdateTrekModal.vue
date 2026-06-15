@@ -22,9 +22,13 @@
           </div>
 
           <div class="form-row">
-            <div class="field full">
+            <div class="field">
               <label>Price (₹) *</label>
               <input v-model.number="form.price" type="number" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label>Available Slots *</label>
+              <input v-model.number="form.available_slots" type="number" min="1" required />
             </div>
           </div>
 
@@ -53,7 +57,8 @@ const emptyForm = () => ({
     start_date: '',
     end_date: '',
     price: '',
-    description: ''
+    description: '',
+    available_slots: '',
 })
 
 export default {
@@ -80,7 +85,8 @@ export default {
                     start_date: this.trek.start_date || '',
                     end_date: this.trek.end_date || '',
                     price: this.trek.price || '',
-                    description: this.trek.description || ''
+                    description: this.trek.description || '',
+                    available_slots: this.available_slots || '',
                 }
             } else {
                 this.form = emptyForm()

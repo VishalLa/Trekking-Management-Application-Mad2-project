@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, get_jwt, verify_jwt_in_request
+from flask_jwt_extended import create_access_token, get_jwt, verify_jwt_in_request, jwt_required
 
 from database.session import db_session as db
 from database.model import User, Role
@@ -54,22 +54,21 @@ def login():
 
 # custome decorator 
 def role_required(required_role):
-    def wrapper(fn):
+    def decorator(fn):
         @wraps(fn)
-        def decorator(*args, **kwargs):
-            # ensure a valid jwt is present in the request header
-            verify_jwt_in_request()
-            # extract the data (claims)
+        @jwt_required()
+        def wrapper(*args, **kwargs):
             claims = get_jwt()
-
-            if claims.get("role") != required_role:
-                return jsonify(
-                    {"message": f"Access forbidden: {required_role} role required."}
-                ), 403
             
+            # print(f"Token contains role -> {claims.get('role')}")
+            # print(f"Route requires role -> {required_role}")
+            
+            if claims.get("role") != required_role:
+                return jsonify({"message": "Forbidden access"}), 403
+                
             return fn(*args, **kwargs)
-        return decorator
-    return wrapper
+        return wrapper
+    return decorator
 
 
 @auth_bp.route("/auth/register/trekker", methods=["POST"])

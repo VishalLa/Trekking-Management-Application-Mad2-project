@@ -15,7 +15,7 @@ from core.config import LocalDevelopmentConfig, Config
 from database.model import User, Role
 from database.base import Base
 
-from api import admin_rotue
+from api import admin_rotue, staff_route
 from auth import auth
 
 from celery_app import app as celery_app
@@ -87,8 +87,9 @@ def create_app():
     CORS(app, expose_headers=["Content-Disposition"])
     app.config.from_object(LocalDevelopmentConfig)
 
-    app.register_blueprint(auth.auth_bp)
-    app.register_blueprint(admin_rotue.admin_bp)
+    app.register_blueprint(auth.auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_rotue.admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(staff_route.staff_bp, url_prefix='/api/staff')
 
     app.config["JWT_SECRET_KEY"] = Config.JWT_SECRET_KEY
     _ = JWTManager(app)

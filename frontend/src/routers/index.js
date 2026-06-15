@@ -7,6 +7,7 @@ import ResetPasswordPage from '../views/auth/ResetPasswordPage.vue'
 import EmailVerifyPage from '../views/auth/EmailVerifyPage.vue'
 
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
+import StaffDashboard from '../views/staff/StaffDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -65,6 +66,24 @@ const router = createRouter({
         }
       ]
     },
+    {
+      path: '/staff',
+      component: StaffDashboard,
+      redirect: '/staff/treks',
+
+      children: [
+        {
+          path: 'treks',
+          name: 'staff-treks',
+          component: () => import('@/views/staff/TrekList.vue')
+        },
+        {
+          path: 'profile',
+          name: 'staff-profile',
+          component: () => import('@/views/staff/StaffProfile.vue')
+        }
+      ]
+    }
   ]
 })
 
