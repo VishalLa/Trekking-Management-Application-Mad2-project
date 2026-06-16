@@ -364,6 +364,16 @@ def get_dashboard_reports():
         return jsonify({"error": "Failed to generate reports."}), 500
     
 
+@admin_bp.route("/reports/historical", methods=["GET"])
+@role_required("ADMIN")
+def get_historical_report():
+    try:
+        data = ReportService.generate_historical_report_data()
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
 @admin_bp.route("/booking/<string:trek_id>", methods=["GET"])
 @role_required("ADMIN")
 def get_trek_specific_booking(trek_id: str):

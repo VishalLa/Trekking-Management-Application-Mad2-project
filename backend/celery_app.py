@@ -9,7 +9,8 @@ app = Celery(
     include=[
         'tasks.admin_tasks',
         'tasks.email_service',
-        'tasks.trek_task'
+        'tasks.trek_task',
+        "tasks.task"
     ]
 )
 
@@ -25,6 +26,12 @@ app.conf.beat_schedule = {
     "daily-trek-countdown-scanner": {
         "task": "tasks.queue_daily_trek_reminders","tasks.queue_daily_trek_reminder"
         "schedule": crontab(hour=8, minute=0),
-        "schedule": crontab(minute="*"),
+        # "schedule": crontab(minute="*"),
+    },
+
+    "daily-trek-auto-close": {
+        'task': 'tasks.auto_close_past_due_treks',
+        'schedule': crontab(hour=0, minute=1),
+        # "schedule": crontab(minute="*")
     }
 }

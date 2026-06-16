@@ -1,8 +1,17 @@
 from sqlalchemy import func, desc, case
 from database.session import db_session as db
-from database.model import Trek, Booking, User, Role, BookingStatus, staff_trek_association
+from database.model import (
+    Trek,
+    Booking, 
+    User, 
+    Role, 
+    BookingStatus, 
+    staff_trek_association, 
+    BookingArchive
+)
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
+from collections import defaultdict
 
 
 class ReportService:
@@ -215,5 +224,51 @@ class ReportService:
         return html_content
             
 
+    @staticmethod 
+    def generate_historical_report_data():
+        archives = db.query(BookingArchive).all()
 
+        monthly_trends = defaultdict(lambda: {"revenue": 0, "bookings": 0})
+        trek_stats = defaultdict(lambda: {
+            "trek_name": "Unknown",
+            "total_bookings": 0,
+            "total_revenue": 0 
+        })
+        status_breakdown = defaultdict(int)
+
+        for archive in archives:
+            trek = archive.trek
+            trek_name = trek.trek_name if trek else "Deleted Trek"
+            price = trek.price if trek else 0 
+
+            month_key = archive.booking_date.strftime("%Y-%m")
+            qty = archive.number_of_booking
+
+            status_breakdown[archive.status.name] += 1
+
+            monthly_trends[month_key]["bookings"] += qty
+            if archive.payment_status:
+                monthly_trends[month_key]["revenue"] += (price * qty)
+
+            trek_stats[archive.trek_id]["trek_name"] = trek_name
+            trek_stats[archive.trek_id]["total_bookings"] += qty
+            if archive.payment_status:
+                trek_stats[archive.trek_id]["total_revenue"] += (price * qty)
+
+        sorted_months = sorted(monthly_trends.keys())
+        sorted_trek_performance = sorted(
+            trek_stats.values(), 
+            key=lambda x: (x["total_revenue"], x["total_bookings"]), 
+            reverse=True
+        )
+
+        return {
+            "labels": sorted_months,
+            "revenue_data": [monthly_trends[m]["revenue"] for m in sorted_months],
+            "booking_data": [monthly_trends[m]["bookings"] for m in sorted_months],
+
+            "trek_performance": sorted_trek_performance,
+            "status_labels": list(status_breakdown.keys()),
+            "status_data": list(status_breakdown.values())
+        }
 

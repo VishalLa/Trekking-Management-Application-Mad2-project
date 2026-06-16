@@ -21,12 +21,21 @@
       >
         📊 Dashboard Overview
       </button>
+      
       <button 
         class="tab-btn" 
         :class="{ active: activeTab === 'archives' }" 
         @click="activeTab = 'archives'"
       >
         🗄️ Historical Archives
+      </button>
+      
+      <button 
+        class="tab-btn" 
+        :class="{ active: activeTab === 'charts' }" 
+        @click="activeTab = 'charts'"
+      >
+        📈 Archive Charts
       </button>
     </div>
 
@@ -129,6 +138,10 @@
       <ArchivedBookings />
     </div>
 
+    <div v-else-if="activeTab === 'charts'">
+      <ArchivedHistoricalReport />
+    </div>
+
   </div>
 </template>
 
@@ -136,10 +149,11 @@
 <script>
 import StatusBadge from '@/components/shared/StatusBadge.vue'
 import ArchivedBookings from '@/components/admin/ArchivedBookings.vue' 
+import ArchivedHistoricalReport from '@/components/admin/ArchivedHistoricalReport.vue' 
 
 export default {
   name: 'ReportView',
-  components: { StatusBadge, ArchivedBookings }, 
+  components: { StatusBadge, ArchivedBookings, ArchivedHistoricalReport }, 
 
   data() {
     return {
