@@ -6,6 +6,7 @@
             <p class="subtitle">Trekking Management Application</p>
 
             <div v-if="errorMessage" class="alert">{{ errorMessage }}</div>
+            <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
 
             <form @submit.prevent="handleLogin" novalidate>
 
@@ -69,7 +70,7 @@
             </form>
 
             <div class="footer-links">
-                <a href="#" @click.prevent>Forgot password?</a>
+                <a href="#" @click.prevent="handleForgotPassword">Forgot password?</a>
                 <span>·</span>
                 <a href="#" @click.prevent="$router.push('/register')">Register</a>
             </div>
@@ -87,6 +88,7 @@ export default {
             form: {email: '', password: '', role: 'ADMIN'},
             errors: {},
             errorMessage: '',
+            successMessage: '',
             loading: false,
             showPassword: false,
         }
@@ -118,6 +120,7 @@ export default {
             if (Object.keys(this.errors).length) return 
                 this.loading = true 
                 this.errorMessage = ""
+                this.successMessage = ""
 
             try {
                 const result = await fetch("/auth/login", {
@@ -134,20 +137,52 @@ export default {
                 localStorage.setItem("tma_role", data.role)
                 localStorage.setItem('user_id', data.user_id)
 
-                if (data.role === "ADMIN") this.$router.push('/dashboard')
-                if (data.role === "STAFF") this.$router.push('/staff')
-                // if (data.role === "TREKKER") this.$router.push('/trekker')
-
                 const map = {
                     ADMIN: '/dashboard',
                     STAFF: '/staff',
-                    TREKKER: '/user/treks'
+                    TREKKER: '/trekker'
                 }
 
                 this.$router.push(map[data.role] || '/')
             } catch {
                 this.errorMessage = "Network error. Please try again."
             } finally{
+                this.loading = false
+            }
+        },
+
+        async handleForgotPassword() {
+            this.errorMessage = ""
+            this.successMessage = ""
+
+            const resetEmail = window.prompt("Reset password email send ", this.form.email)
+            
+            if (!resetEmail) return
+
+            this.loading = true
+
+            try {
+                const result = await fetch("/auth/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: resetEmail })
+                })
+
+                const data = await result.json()
+
+                if (!result.ok) {
+                    this.errorMessage = data.errors || data.message || "Failed to send reset link"
+                    return
+                }
+
+                this.successMessage = data.message || "If email exists a reset link has been send."
+
+                setTimeout(() => {
+                    this.successMessage = ""
+                }, 6000)
+            } catch {
+                this.errorMessage = "Netwrok error. Please try again."
+            } finally {
                 this.loading = false
             }
         }

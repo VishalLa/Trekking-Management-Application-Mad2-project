@@ -39,7 +39,9 @@ export default {
         }
     },
     async mounted() {
-        await this.verifyToken();
+        setTimeout(async () => {
+            await this.verifyToken()
+        }, 500)
     },
     methods: {
         async verifyToken() {

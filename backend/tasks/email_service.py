@@ -70,7 +70,13 @@ def send_active_email(self, user_email: str, user_name: str):
 
 
 @app.task(bind=True, max_retries=3)
-def send_trek_cancellation_email(self, user_email: str, user_name: str, trek_name: str, refund_amount: str):
+def send_trek_cancellation_email(
+    self, 
+    user_email: str, 
+    user_name: str, 
+    trek_name: str, 
+    refund_amount: str
+):
     subject = f"Urgent: {trek_name} has been cancelled"
     body = f"Hello {user_name},\n\nWe regret to inform you that {trek_name} has been cancelled. A full refund of ₹{refund_amount} has been initiated to your original payment method."
     
@@ -118,7 +124,7 @@ def queue_daily_trek_reminder():
                 trek_name=booking.trek.trek_name,
                 days_left=days_left,
                 location=booking.trek.location,
-                start_date=booking.trek.start_date.strftime('%d %B %Y'), # e.g., 15 June 2026
+                start_date=booking.trek.start_date.strftime('%d %B %Y'),
                 end_date=booking.trek.end_date.strftime('%d %B %Y'),
                 duration=booking.trek.duration,
                 trek_details=booking.trek.description
@@ -134,7 +140,18 @@ def queue_daily_trek_reminder():
 
 
 @app.task(bind=True, max_retries=3)
-def send_countdown_email(self, user_email: str, user_name: str, trek_name: str, days_left: int, location: str, start_date: str, end_date: str, duration: int, trek_details: str):
+def send_countdown_email(
+    self, 
+    user_email: str, 
+    user_name: str, 
+    trek_name: str, 
+    days_left: int, 
+    location: str, 
+    start_date: str, 
+    end_date: str, 
+    duration: int, 
+    trek_details: str
+):
 
     day_word = "day" if days_left == 1 else "days"
     subject = f"Countdown: Only {days_left} {day_word} until {trek_name}! 🏔️"
@@ -188,7 +205,17 @@ def send_countdown_email(self, user_email: str, user_name: str, trek_name: str, 
 
 
 @app.task(bind=True, max_retries=3)
-def info_about_new_trek(self, user_email: str, user_name: str, trek_name: str, location: str, start_date: str, end_date: str, duration: int, trek_details: str):
+def info_about_new_trek(
+    self, 
+    user_email: str, 
+    user_name: str, 
+    trek_name: str, 
+    location: str, 
+    start_date: str, 
+    end_date: str, 
+    duration: int, 
+    trek_details: str
+):
     print(f"⏳ Preparing to send new trek alert to {user_email}...")
     
     subject = f"New Trek Alert! {trek_name} is now OPEN for booking 🏔️"
@@ -242,3 +269,128 @@ def info_about_new_trek(self, user_email: str, user_name: str, trek_name: str, l
         print(f"Failed to send new trek alert to {user_email}: {exc}")
         raise self.retry(exc=exc, countdown=60)
     
+
+@app.task(bind=True, max_retries=3)
+def send_account_verification_mail(
+    self, 
+    user_email: str,
+    user_name: str,
+    verification_link: str
+):
+    subject = f"Verification Email"
+    html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2 style="color: #1a6b42;">Welcome to the trails, {user_name}! 🏔️</h2>
+            <p>We are thrilled to have you join the Trek Management Application. Your next great adventure is just a few steps away.</p>
+            
+            <p>Before you can start booking your favorite treks, we just need to quickly verify your email address to secure your account.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verification_link}" style="background-color: #1a6b42; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Verify My Email Account</a>
+            </div>
+            
+            <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #1a6b42; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px;"><strong>Button not working?</strong> Copy and paste this secure link directly into your browser:</p>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #1a6b42; word-break: break-all;">{verification_link}</p>
+            </div>
+
+            <p style="font-size: 13px; color: #6b7280;"><em>Note: This verification link will expire in 1 hour. If you did not sign up for this account, you can safely ignore this email.</em></p>
+            
+            <p>See you out there,<br>
+            <strong>Trek Management Team</strong></p>
+        </body>
+        </html>
+    """
+
+    try: 
+        sender_email = os.environ.get("EMAIL_USER")
+        sender_password = os.environ.get("EMAIL_PASS")
+
+        msg = MIMEMultipart("alternative")
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+        print(f"Email verification send to Trekker: {user_email}")
+        return "Success"
+
+    except Exception as exc: 
+        print(f"Failed to send verification email to {user_email}: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+
+
+@app.task(bind=True, max_retries=3)
+def send_password_reset_email(
+    self, 
+    user_email: str, 
+    user_name: str,
+    reset_url: str
+):
+    subject = f"Password Reset"
+    html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2 style="color: #1a6b42;">Password Reset Request 🔐</h2>
+            <p>Hi {user_name},</p>
+            <p>We received a request to reset the password for your Trek Management account associated with <strong>{user_email}</strong>.</p>
+            
+            <p>If you made this request, please click the secure button below to create a new password:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{reset_url}" style="background-color: #1a6b42; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Reset My Password</a>
+            </div>
+            
+            <div style="background-color: #f3f4f6; padding: 15px; border-left: 4px solid #1a6b42; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px;"><strong>Button not working?</strong> Copy and paste this secure link directly into your browser:</p>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #1a6b42; word-break: break-all;">{reset_url}</p>
+            </div>
+
+            <p style="font-size: 13px; color: #6b7280;"><em>Note: This password reset link will expire in 15 minutes. If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged and your account is secure.</em></p>
+            
+            <p>Stay safe out there,<br>
+            <strong>Trek Management Team</strong></p>
+        </body>
+        </html>
+    """
+
+    try: 
+        sender_email = os.environ.get("EMAIL_USER")
+        sender_password = os.environ.get("EMAIL_PASS")
+
+        msg = MIMEMultipart("alternative")
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+        print(f"Email password reset send to Trekker: {user_email}")
+        return "Success"
+
+    except Exception as exc: 
+        print(f"Failed to send password reset email to {user_email}: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+
+    
+@app.task(bind=True, max_retries=3)
+def send_booked_trek_mail(    
+    self, 
+    user_email: str, 
+    user_name: str, 
+    trek_name: str, 
+    location: str, 
+    start_date: str, 
+    end_date: str, 
+    duration: int, 
+    trek_details: str
+):
+    pass

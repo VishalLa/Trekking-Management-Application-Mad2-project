@@ -3,6 +3,8 @@ from database.model import User, TrekkerProfile, StaffProfile, Role
 from .helper import validate_credential
 from core.security import generate_verification_token
 
+from tasks.email_service import send_account_verification_mail
+
 
 class AuthService:
     
@@ -63,10 +65,12 @@ class AuthService:
         if enum_role == Role.TREKKER:
             new_user.trekker_profile = TrekkerProfile()
             token = generate_verification_token(new_user.email) 
-            # point back to frontend
-            verification_url = f"http://localhost:8080/verify-email?token={token}"
-
-            # TODO: use celery for actual email
+            verification_link = f"http://localhost:5173/verify-email?token={token}"
+            send_account_verification_mail(
+                user_email=data["email"],
+                user_name=f"{data['first_name']} {data['last_name']}",
+                verification_link=verification_link
+            )
 
         elif enum_role == Role.STAFF:
             new_user.staff_profile = StaffProfile(experience=str(data["experience"]))

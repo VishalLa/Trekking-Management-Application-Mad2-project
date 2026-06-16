@@ -1,14 +1,11 @@
+import os
 from database.session import db_session as db 
 from database.model import User, Role
 from core.security import (
-    generate_stateless_otp_token, 
-    generate_6_digit_otp, 
     generate_password_reset_token, 
-    verify_stateless_otp_token, 
-    verify_password,
     verify_password_reset_token
 )
-
+from tasks.email_service import send_password_reset_email
 
 class PasswordResetService:
 
@@ -23,10 +20,14 @@ class PasswordResetService:
             raise ValueError("Staff member must reset their password via Phone Number.")
         
         token = generate_password_reset_token(user.email)
-        reset_url = f"http://localhost:8080/reset-password?token={token}"
+        reset_url = f"http://localhost:5173/reset-password?token={token}"
 
-        # TODO: Send actual email via celery
-        print(f"📧 EMAIL SENT TO {user.email}: Click to reset password: {reset_url}")
+        send_password_reset_email(
+            user_email=user.email,
+            user_name=f"{user.first_name} {user.last_name}",
+            reset_url=reset_url
+        )
+        # print(f"📧 EMAIL SENT TO {user.email}: Click to reset password: {reset_url}")
         return True
     
 
@@ -51,44 +52,44 @@ class PasswordResetService:
         return True
     
 
-    @staticmethod
-    def request_reset_via_phone(phone_no: str):
-        user = db.query(User).filter_by(phone_no=phone_no).first()
-        if not user:
-            raise ValueError("Phone number not found.")
+    # @staticmethod
+    # def request_reset_via_phone(phone_no: str):
+    #     user = db.query(User).filter_by(phone_no=phone_no).first()
+    #     if not user:
+    #         raise ValueError("Phone number not found.")
         
-        otp = generate_6_digit_otp()
-        reset_token = generate_stateless_otp_token(user.phone_no, otp)
+    #     otp = generate_6_digit_otp()
+    #     reset_token = generate_stateless_otp_token(user.phone_no, otp)
 
-        # TODO: Send the raw `otp` via SMS here
-        print(f"📱 SMS SENT TO {user.phone_no}: Your password reset OTP is {otp}")
+    #     # TODO: Send the raw `otp` via SMS here
+    #     print(f"📱 SMS SENT TO {user.phone_no}: Your password reset OTP is {otp}")
 
-        return reset_token
+    #     return reset_token
     
 
-    @staticmethod
-    def reset_with_phone_otp(reset_token: str, user_typed_otp: str, new_password: str):
-        payload = verify_stateless_otp_token(reset_token)
-        if not payload:
-            raise ValueError("OTP session has expired or is invalid. Please request a new one.")
+    # @staticmethod
+    # def reset_with_phone_otp(reset_token: str, user_typed_otp: str, new_password: str):
+    #     payload = verify_stateless_otp_token(reset_token)
+    #     if not payload:
+    #         raise ValueError("OTP session has expired or is invalid. Please request a new one.")
         
-        phone_no = payload.get("phone_no")
-        saved_otp_hash = payload.get("otp_hash")
+    #     phone_no = payload.get("phone_no")
+    #     saved_otp_hash = payload.get("otp_hash")
 
-        if not verify_password(hashed_password=saved_otp_hash, plain_password=user_typed_otp):
-            raise ValueError("Invalid OTP.")
+    #     if not verify_password(hashed_password=saved_otp_hash, plain_password=user_typed_otp):
+    #         raise ValueError("Invalid OTP.")
         
-        user = db.query(User).filter_by(phone_no=phone_no).first()
+    #     user = db.query(User).filter_by(phone_no=phone_no).first()
 
-        if not user:
-            raise ValueError("User not found.")
+    #     if not user:
+    #         raise ValueError("User not found.")
             
-        user.set_password(new_password)
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise Exception("Failed to reset password")
+    #     user.set_password(new_password)
+    #     try:
+    #         db.commit()
+    #     except Exception:
+    #         db.rollback()
+    #         raise Exception("Failed to reset password")
             
-        return True
+    #     return True
         

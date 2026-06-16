@@ -3,9 +3,10 @@ from flask_jwt_extended import create_access_token, get_jwt, verify_jwt_in_reque
 
 from database.session import db_session as db
 from database.model import User, Role
-from core.security import verify_token
+from core.security import verify_token, generate_verification_token
 from service.register_service import AuthService
 from service.password_service import PasswordResetService
+from tasks.email_service import send_account_verification_mail
 
 from functools import wraps 
 
@@ -28,6 +29,13 @@ def login():
     
     if user.role == Role.TREKKER:
         if user.trekker_profile and not user.trekker_profile.email_verified:
+            token = generate_verification_token(user.email) 
+            verification_link = f"http://localhost:5173/verify-email?token={token}"
+            send_account_verification_mail(
+                user_email=data["email"],
+                user_name=f"{user.first_name} {user.last_name}",
+                verification_link=verification_link
+            )
             return jsonify({"message": "Please check your email to verify your account before logging in."}), 403
     
     additional_claims = {"role": user.role.name}
@@ -71,7 +79,7 @@ def role_required(required_role):
     return decorator
 
 
-@auth_bp.route("/auth/register/trekker", methods=["POST"])
+@auth_bp.route("/register/trekker", methods=["POST"])
 def register_trekker():
     data = request.get_json()
 
@@ -96,7 +104,7 @@ def register_trekker():
 
 
 # only admin can create staff
-@auth_bp.route("/auth/register/staff", methods=["POST"])
+@auth_bp.route("/register/staff", methods=["POST"])
 @role_required("ADMIN")
 def register_staff():
     data = request.get_json()
@@ -121,7 +129,7 @@ def register_staff():
         return jsonify({"error": "Internal Server Error"}), 500
 
 
-@auth_bp.route("/auth/verify-email", methods=["POST"])
+@auth_bp.route("/verify-email", methods=["POST"])
 def verify_email():
     data = request.get_json()
     token = data.get("token")
@@ -153,74 +161,88 @@ def verify_email():
         return jsonify({"error": "Database error"}), 500
     
 
-@auth_bp.route("/auth/forgot-password", methods=["POST"])
+@auth_bp.route("/forgot-password", methods=["POST"])
 def forgot_password():
     data = request.get_json()
-    method = data.get("method")
+    # method = data.get("method")
     
     try:
-        # Email Request
-        if method == "email":
-            email = data.get("email")
-            if not email:
-                return jsonify({"error": "Email is required for this method"}), 400
+        # # Email Request
+        # if method == "email":
+        #     email = data.get("email")
+        #     if not email:
+        #         return jsonify({"error": "Email is required for this method"}), 400
                 
-            PasswordResetService.request_reset_via_email(email)
-            return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
+        #     PasswordResetService.request_reset_via_email(email)
+        #     return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
             
-        # Phone Request
-        elif method == "phone":
-            phone_no = data.get("phone_no")
-            if not phone_no:
-                return jsonify({"error": "Phone number is required for this method"}), 400
+        # # Phone Request
+        # elif method == "phone":
+        #     phone_no = data.get("phone_no")
+        #     if not phone_no:
+        #         return jsonify({"error": "Phone number is required for this method"}), 400
                 
-            token = PasswordResetService.request_reset_via_phone(phone_no)
-            return jsonify({
-                "message": "An OTP has been sent to your phone.",
-                "reset_token": token 
-            }), 200
+        #     token = PasswordResetService.request_reset_via_phone(phone_no)
+        #     return jsonify({
+        #         "message": "An OTP has been sent to your phone.",
+        #         "reset_token": token 
+        #     }), 200
             
-        else:
-            return jsonify({"error": "Invalid or missing reset method. Must be 'email' or 'phone'."}), 400
-            
+        # else:
+        #     return jsonify({"error": "Invalid or missing reset method. Must be 'email' or 'phone'."}), 400
+        
+        email = data.get("email")
+        if not email:
+            return jsonify({"error": "Email is required for this method"}), 400
+                
+        PasswordResetService.request_reset_via_email(email)
+        return jsonify({"message": "If the email exists, a reset link has been sent."}), 200
+
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
     
 
-@auth_bp.route("/auth/reset-password", methods=["POST"])
+@auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     data = request.get_json()
-    method = data.get("method")
+    # method = data.get("method")
     new_password = data.get("new_password")
     
     if not new_password:
         return jsonify({"error": "new_password is required"}), 400
 
     try:
-        # Execute Email Reset
-        if method == "email":
-            token = data.get("token")
-            if not token:
-                return jsonify({"error": "Email verification token is missing"}), 400
+        # # Execute Email Reset
+        # if method == "email":
+        #     token = data.get("token")
+        #     if not token:
+        #         return jsonify({"error": "Email verification token is missing"}), 400
                 
-            PasswordResetService.reset_with_email_token(token, new_password)
-            return jsonify({"message": "Password reset successfully. You can now log in."}), 200
+        #     PasswordResetService.reset_with_email_token(token, new_password)
+        #     return jsonify({"message": "Password reset successfully. You can now log in."}), 200
             
-        # Execute Phone Reset
-        elif method == "phone":
-            reset_token = data.get("reset_token")
-            otp = data.get("otp")
+        # # Execute Phone Reset
+        # elif method == "phone":
+        #     reset_token = data.get("reset_token")
+        #     otp = data.get("otp")
             
-            if not reset_token or not otp:
-                return jsonify({"error": "Both reset_token and otp are required for phone resets"}), 400
+        #     if not reset_token or not otp:
+        #         return jsonify({"error": "Both reset_token and otp are required for phone resets"}), 400
                 
-            PasswordResetService.reset_with_phone_otp(reset_token, otp, new_password)
-            return jsonify({"message": "Password reset successfully. You can now log in."}), 200
+        #     PasswordResetService.reset_with_phone_otp(reset_token, otp, new_password)
+        #     return jsonify({"message": "Password reset successfully. You can now log in."}), 200
             
-        else:
-            return jsonify({"error": "Invalid or missing reset method. Must be 'email' or 'phone'."}), 400
+        # else:
+        #     return jsonify({"error": "Invalid or missing reset method. Must be 'email' or 'phone'."}), 400
+
+        token = data.get("token")
+        if not token:
+            return jsonify({"error": "Email verification token is missing"}), 400
+                
+        PasswordResetService.reset_with_email_token(token, new_password)
+        return jsonify({"message": "Password reset successfully. You can now log in."}), 200
             
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

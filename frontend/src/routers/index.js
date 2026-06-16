@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginPage from '../views/auth/LoginPage.vue'
 import RegisterPage from '../views/auth/RegisterPage.vue'
-import ForgetPasswordPage from '../views/auth/ForgetPasswordPage.vue'
 import ResetPasswordPage from '../views/auth/ResetPasswordPage.vue'
 import EmailVerifyPage from '../views/auth/EmailVerifyPage.vue'
 
@@ -21,11 +20,6 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: RegisterPage
-    },
-    {
-      path: '/forgot-password',
-      name: 'forgot-password',
-      component: ForgetPasswordPage
     },
     {
       path: '/reset-password',

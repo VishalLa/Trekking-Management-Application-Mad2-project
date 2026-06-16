@@ -18,14 +18,42 @@
                     <span class="field-msg" style="color: #697077;">Check your phone for the code.</span>
                 </div>
 
-                <div class="field">
+                    <div class="field">
                     <label for="password">New Password</label>
-                    <input id="password" v-model="form.new_password" type="password" placeholder="••••••••" :disabled="loading" required minlength="8" />
+                    <div class="input-row">
+                        <input
+                            id="password"
+                            v-model="form.new_password"
+                            :type="showPassword ? 'text' : 'password'"
+                            placeholder="••••••••"
+                            autocomplete="new-password"
+                            :disabled="loading"
+                            required
+                            minlength="8"
+                        />
+                        <button type="button" class="eye" @click="showPassword = !showPassword" tabindex="-1">
+                            {{ showPassword ? 'Hide' : 'Show' }}
+                        </button>
+                    </div>
                 </div>
 
                 <div class="field" :class="{ error: passwordMismatch }">
                     <label for="confirm">Confirm Password</label>
-                    <input id="confirm" v-model="form.confirm_password" type="password" placeholder="••••••••" :disabled="loading" required />
+                    <div class="input-row">
+                        <input
+                            id="confirm"
+                            v-model="form.confirm_password"
+                            :type="showPassword ? 'text' : 'password'"
+                            placeholder="••••••••"
+                            autocomplete="new-password"
+                            :disabled="loading"
+                            required
+                            minlength="8"
+                        />
+                        <button type="button" class="eye" @click="showPassword = !showPassword" tabindex="-1">
+                            {{ showPassword ? 'Hide' : 'Show' }}
+                        </button>
+                    </div>
                     <span v-if="passwordMismatch" class="field-msg">Passwords do not match.</span>
                 </div>
 
@@ -43,7 +71,7 @@ export default {
     name: "ResetPasswordPage",
     data() {
         return {
-            method: '',
+            method: 'email',
             token: '',
             form: {
                 otp: '',
@@ -52,7 +80,8 @@ export default {
             },
             errorMessage: '',
             successMessage: '',
-            loading: false
+            loading: false,
+            showPassword: false
         }
     },
     computed: {
@@ -64,10 +93,10 @@ export default {
         }
     },
     mounted() {
-        this.method = this.$route.query.method;
+        this.method = this.$route.query.method || 'email';
         this.token = this.$route.query.token;
 
-        if (!this.method || !this.token) {
+        if (!this.token) {
             this.errorMessage = "Invalid or missing reset token. Please request a new password reset link.";
         }
     },
@@ -136,6 +165,10 @@ export default {
 .field input:disabled { background: #f4f5f7; cursor: not-allowed; }
 .field.error input { border-color: #e53935; }
 .field-msg { display: block; font-size: 12px; color: #c62828; margin-top: 4px; }
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; }
+.eye { width: 80px; height: 40px; padding: 0 12px; border: 1px solid #dde1e7; border-radius: 6px; background: #f4f5f7; font-family: inherit; font-size: 12px; font-weight: 500; color: #697077; cursor: pointer; white-space: nowrap; }
+.eye:hover { background: #e8eaed; }
 .submit { width: 100%; height: 42px; margin-top: 8px; background: #1a6b42; border: none; border-radius: 6px; color: #fff; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
 .submit:hover:not(:disabled) { background: #155a36; }
 .submit:disabled { opacity: 0.6; cursor: not-allowed; }
