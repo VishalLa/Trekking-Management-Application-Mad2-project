@@ -145,7 +145,7 @@ class Booking(Base):
     trek_id = Column(String(36), ForeignKey("trek.trek_id"), index=True, nullable=False)
     
     booking_date = Column(Date, nullable=False)
-    status = Column(SQLEnum(BookingStatus), nullable=False)
+    status = Column(SQLEnum(BookingStatus), nullable=False, default=BookingStatus.BOOKED)
     number_of_booking = Column(Integer, nullable=False, default=0)
     payment_status = Column(Boolean, nullable=False, default=False)
 
