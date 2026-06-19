@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SharedTrekList role="ADMIN" />
+    <SharedTrekList role="TREKKER" />
   </div>
 </template>
 
@@ -8,6 +8,6 @@
 import SharedTrekList from '@/components/shared/SharedTrekList.vue';
 export default { 
   name: 'TrekList',
-  components: { SharedTrekList } 
+  components: { SharedTrekList }
 }
 </script>

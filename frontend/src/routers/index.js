@@ -7,6 +7,7 @@ import EmailVerifyPage from '../views/auth/EmailVerifyPage.vue'
 
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
 import StaffDashboard from '../views/staff/StaffDashboard.vue'
+import TrekkerDashboard from '../views/user/TrekkerDashboard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -75,6 +76,19 @@ const router = createRouter({
           path: 'profile',
           name: 'staff-profile',
           component: () => import('@/views/staff/StaffProfile.vue')
+        }
+      ]
+    },
+    {
+      path: '/trekker', 
+      component: TrekkerDashboard,
+      redirect: '/trekker/treks',
+
+      children: [
+        {
+          path: 'treks',
+          name: 'trekker-treks',
+          component: () => import('@/views/user/TrekList.vue')
         }
       ]
     }

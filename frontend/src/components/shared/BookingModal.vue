@@ -134,7 +134,7 @@ export default {
       this.error = null
       try {
         const urlPrefix = this.role.toUpperCase() === 'STAFF' ? '/staff' : '/admin'
-        const res = await fetch(`/${urlPrefix }/booking/${this.trek.trek_id}`, { 
+        const res = await fetch(`${urlPrefix }/booking/${this.trek.trek_id}`, { 
           headers: this.headers() 
         })
 

@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, get_jwt, verify_jwt_in_request, jwt_required
 
 from database.session import db_session as db
-from database.model import User, Role
+from database.model import User, Role, Status
 from core.security import verify_token, generate_verification_token
 from service.register_service import AuthService
 from service.password_service import PasswordResetService
@@ -26,6 +26,9 @@ def login():
 
     if not user or not user.check_password(password):
         return jsonify({"message": "Invalid email or password"}), 401
+
+    if user.status == Status.SUSPENDED:
+        return jsonify({"message": "Account has been suspended please contact admin"}), 401
     
     if user.role == Role.TREKKER:
         if user.trekker_profile and not user.trekker_profile.email_verified:

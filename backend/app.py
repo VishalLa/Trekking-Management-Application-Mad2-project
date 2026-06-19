@@ -15,7 +15,7 @@ from core.config import LocalDevelopmentConfig, Config
 from database.model import User, Role
 from database.base import Base
 
-from api import admin_rotue, staff_route
+from api import admin_rotue, staff_route, trekker_route
 from auth import auth
 
 from celery_app import app as celery_app
@@ -90,6 +90,7 @@ def create_app():
     app.register_blueprint(auth.auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_rotue.admin_bp, url_prefix='/api/admin')
     app.register_blueprint(staff_route.staff_bp, url_prefix='/api/staff')
+    app.register_blueprint(trekker_route.trekker_bp, url_prefix="/api/trekker")
 
     app.config["JWT_SECRET_KEY"] = Config.JWT_SECRET_KEY
     _ = JWTManager(app)

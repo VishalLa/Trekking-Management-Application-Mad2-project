@@ -1,6 +1,7 @@
 from database.session import db_session as db
 from database.model import (
     User,
+    Status,
     Trek, 
     TrekStatus,
     TrekDifficulty,
@@ -14,12 +15,24 @@ from sqlalchemy import or_, cast, String
 from datetime import date
 
 
+class Duplicate(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class NotFound(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class TrekkerProfile:
     @staticmethod
     def update_profile(user_id: str, profile_data: dict):
         user = db.query(User).filter_by(id=user_id).first()
         if not user:
-            raise ValueError("User not found")
+            raise NotFound("User not found")
         
         if "first_name" in profile_data: user.first_name = profile_data["first_name"]
         if "last_name" in profile_data: user.last_name = profile_data["last_name"]
@@ -44,7 +57,7 @@ class TrekkerProfile:
         ).first()
 
         if not user:
-            raise ValueError(f"User not found")
+            raise NotFound(f"User not found")
         
         format_data = {
             "user_id": user.id,
@@ -66,7 +79,7 @@ class TrekkerDashboard:
         treks = db.query(Trek).all()
 
         if treks == []:
-            raise ValueError("No treks found!")
+            raise NotFound("No treks found!")
         
         formated_trek = [
             {
@@ -82,7 +95,7 @@ class TrekkerDashboard:
                 "end_date": trek.end_date,
             }
             for trek in treks 
-                if trek in [TrekStatus.OPEN, TrekStatus.APPROVED]
+                if trek.status in [TrekStatus.OPEN, TrekStatus.APPROVED]
         ]
 
         return formated_trek
@@ -163,14 +176,24 @@ class BookingService:
 
         user = db.query(User).filter(
             User.id == user_id, 
-            User.status == Role.TREKKER
+            User.role == Role.TREKKER,
+            User.status == Status.ACTIVE
         ).first()
         if not user:
-            raise ValueError(f"No valid Trekker account found for ID: {user_id}")
+            raise NotFound(f"No valid Trekker account found for ID: {user_id}")
         
         trek = db.query(Trek).filter_by(trek_id=trek_id).first()
         if not trek:
-            raise ValueError(f"No Trek found for ID: {trek_id}")
+            raise NotFound(f"No Trek found for ID: {trek_id}")
+        
+        existing_booking = db.query(Booking).filter(
+            Booking.user_id == user_id, 
+            Booking.trek_id == trek_id, 
+        ).first()
+
+        if existing_booking:
+            raise Duplicate(f"Booking for trek: {trek_id} by trekker: {user_id} already exists")
+
         
         if trek.available_slots < number_of_booking:
             raise ValueError(f"Cannot book {number_of_booking} tickets. Only {trek.available_slots} slots remaining.")
@@ -195,16 +218,16 @@ class BookingService:
             db.commit()
         except Exception as e:
             db.rollback()
-            raise ValueError(f"Database Error: {str(e)}")
+            raise Exception(f"Database Error: {str(e)}")
         
         return booking
         
 
     @staticmethod
-    def complete_booking(user_id: str, trek_id: str):
+    def complete_booking(user_id: str, booking_id: str):
         booking = db.query(Booking).filter(
             Booking.user_id == user_id,
-            Booking.trek_id == trek_id
+            Booking.booking_id == booking_id
         ).first()
 
         if not booking:
@@ -221,5 +244,5 @@ class BookingService:
             db.commit()
         except Exception as e:
             db.rollback()
-            raise ValueError("Server Error")
+            raise Exception("Server Error")
         

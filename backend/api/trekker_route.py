@@ -4,7 +4,9 @@ from flask_jwt_extended import get_jwt_identity
 from service.trekker_service import (
     TrekkerDashboard,
     TrekkerProfile,
-    BookingService
+    BookingService,
+    Duplicate,
+    NotFound
 )
 
 from auth.auth import role_required
@@ -109,8 +111,29 @@ def book_trek(user_id: str, trek_id: str):
             "booking_id": booking.booking_id
         }), 201
     
+    except Duplicate as e:
+        return jsonify({"error": f"{e}"}), 409
+    except NotFound as e:
+        return jsonify({"error": f"{e}"}), 404
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": f"{e}"}), 400
     except Exception as e:
-        print(f"Unexpected error during booking: {e}")
-        return jsonify({"error": "An unexpected server error occurred."}), 500
+        return jsonify({"error": f"Internal Server Error {e}"}), 500
+    
+
+@trekker_bp.route("/<string:user_id>/complete-booking/<string:booking_id>", methods=["POST"])
+@role_required("TREKKER")
+def complete_booking(user_id: str, booking_id: str):
+    try: 
+        BookingService.complete_booking(user_id=user_id, booking_id=booking_id)
+
+        return jsonify({
+            "message": "Booking complete",
+            "booking_id": booking_id
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({"error": f"{e}"}), 400
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+
