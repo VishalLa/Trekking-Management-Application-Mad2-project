@@ -11,6 +11,7 @@ from database.model import (
     Role
 )
 from tasks.payment_service import payment
+from tasks.email_service import send_booked_trek_mail, send_cancel_booking_mail
 from sqlalchemy import or_, cast, String
 from datetime import date
 
@@ -22,6 +23,12 @@ class Duplicate(Exception):
 
 
 class NotFound(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class PaymentFailed(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
@@ -212,6 +219,16 @@ class BookingService:
             payment_status = False,
         )
 
+        send_booked_trek_mail(
+            user_email=user.email,
+            user_name=f"{user.first_name} {user.last_name}",
+            trek_name=trek.trek_name,
+            location=trek.location,
+            start_date=trek.start_date,
+            end_date=trek.end_date,
+            duration=trek.duration,
+            trek_details=trek.description
+        )
 
         try: 
             db.add(booking)
@@ -224,25 +241,62 @@ class BookingService:
         
 
     @staticmethod
-    def complete_booking(user_id: str, booking_id: str):
+    def complete_booking(user_id: str, booking_id: str, card_data: dict):
+        """
+        Expected card_data: 
+        {
+            'card_no': int, 
+            'card_cvv': int,
+            'price': float,
+            'phone_no': int, 
+            'expration_date': str, # Expected format 'MM/YY'
+            'card_holder_name': str
+        }
+        """
         booking = db.query(Booking).filter(
             Booking.user_id == user_id,
             Booking.booking_id == booking_id
         ).first()
 
         if not booking:
-            raise ValueError("Booking data not found")
+            raise NotFound("Booking data not found")
         
-        #TODO: Implement Payment simulation 
-        payment_status = payment(user_id=user_id, price=booking.trek.price)
+        payment_status = payment(card_data=card_data)
+
         if payment_status:
             booking.payment_status = payment_status
         else:
-            raise ValueError("Payment Failed If your amount is debited refund will be initiated")
+            raise PaymentFailed("Payment Failed If your amount is debited refund will be initiated")
         
         try:
             db.commit()
         except Exception as e:
             db.rollback()
             raise Exception("Server Error")
+        
+
+    def cancel_booking(user_id: str, booking_id: str):
+        booking = db.query(Booking).filter(
+            Booking.user_id == user_id,
+            Booking.booking_id == booking_id
+        ).first()
+
+        if not booking:
+            raise NotFound(f"No Booking found for user: {user_id}") 
+        
+        try: 
+            trek = booking.trek 
+            trek.available_slots += booking.number_of_booking
+
+            send_cancel_booking_mail(
+                user_name=f"{booking.user.first_name} {booking.user.last_name}",
+                user_email=booking.user.email,
+                trek_name=booking.trek.trek_name
+            )
+
+            db.delete(booking)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise Exception("Internal Server Error")
         

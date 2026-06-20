@@ -6,7 +6,8 @@ from service.trekker_service import (
     TrekkerProfile,
     BookingService,
     Duplicate,
-    NotFound
+    NotFound,
+    PaymentFailed
 )
 
 from auth.auth import role_required
@@ -118,22 +119,44 @@ def book_trek(user_id: str, trek_id: str):
     except ValueError as e:
         return jsonify({"error": f"{e}"}), 400
     except Exception as e:
-        return jsonify({"error": f"Internal Server Error {e}"}), 500
+        return jsonify({"error": f"Internal Server Error"}), 500
     
 
 @trekker_bp.route("/<string:user_id>/complete-booking/<string:booking_id>", methods=["POST"])
 @role_required("TREKKER")
 def complete_booking(user_id: str, booking_id: str):
     try: 
-        BookingService.complete_booking(user_id=user_id, booking_id=booking_id)
+        card_data = request.get_json()
+        if not card_data:
+            return jsonify({"error": "No update data provided"}), 400
+
+        BookingService.complete_booking(
+            user_id=user_id, 
+            booking_id=booking_id,
+            card_data=card_data
+        )
 
         return jsonify({
             "message": "Booking complete",
             "booking_id": booking_id
         }), 200
     
-    except ValueError as e:
-        return jsonify({"error": f"{e}"}), 400
+    except NotFound as e:
+        return jsonify({"error": f"{e}"}), 404
+    except PaymentFailed as e:
+        return jsonify({"error": str(e)}), 402
     except Exception as e:
         return jsonify({"error": "Internal Server Error"}), 500
 
+
+@trekker_bp.route("/<string:user_id>/cancel-booking/<string:booking_id>", methods=["POST"])
+@role_required("TREKKER")
+def cancel_booking(user_id: str, booking_id: str):
+    try: 
+        BookingService.cancel_booking(user_id=user_id, booking_id=booking_id)
+        return jsonify({"message": "booking canceled"}), 200
+    
+    except NotFound as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500

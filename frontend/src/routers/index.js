@@ -75,20 +75,32 @@ const router = createRouter({
         {
           path: 'profile',
           name: 'staff-profile',
-          component: () => import('@/views/staff/StaffProfile.vue')
+          component: () => import('@/components/shared/UserProfile.vue'),
+          props: { role: 'STAFF' }
         }
       ]
     },
     {
       path: '/trekker', 
       component: TrekkerDashboard,
-      redirect: '/trekker/treks',
+      // redirect: '/trekker/treks',
 
       children: [
         {
           path: 'treks',
           name: 'trekker-treks',
           component: () => import('@/views/user/TrekList.vue')
+        },
+        {
+          path: 'booked-trek-list',
+          name: 'booked-trek-list',
+          computed: () => import('@/views/user/BookedTrekList.vue')
+        },
+        {
+          path: 'profile',
+          name: 'trekker-profile',
+          component: () => import('@/components/shared/UserProfile.vue'),
+          props: { role: 'TREKKER' }
         }
       ]
     }

@@ -42,27 +42,29 @@
           <input v-model="form.address" type="text" placeholder="City, State, Country" />
         </div>
 
-        <hr class="divider" />
+        <template v-if="role === 'STAFF'">
+          <hr class="divider" />
 
-        <h3 class="group-title">Professional Details</h3>
-        <div class="form-row">
-          <div class="field">
-            <label>Years of Experience</label>
-            <input v-model.number="form.experience" type="number" min="0" />
+          <h3 class="group-title">Professional Details</h3>
+          <div class="form-row">
+            <div class="field">
+              <label>Years of Experience</label>
+              <input v-model.number="form.experience" type="number" min="0" />
+            </div>
+            <div class="field">
+            </div>
           </div>
-          <div class="field">
-             </div>
-        </div>
 
-        <div class="field full">
-          <label>Short Bio</label>
-          <textarea v-model="form.bio" rows="3" placeholder="Tell us a bit about yourself..."></textarea>
-        </div>
+          <div class="field full">
+            <label>Short Bio</label>
+            <textarea v-model="form.bio" rows="3" placeholder="Tell us a bit about yourself..."></textarea>
+          </div>
 
-        <div class="field full">
-          <label>Guide Description (Visible to Trekkers)</label>
-          <textarea v-model="form.description" rows="4" placeholder="How would you describe your guiding style?"></textarea>
-        </div>
+          <div class="field full">
+            <label>Guide Description (Visible to Trekkers)</label>
+            <textarea v-model="form.description" rows="4" placeholder="How would you describe your guiding style?"></textarea>
+          </div>
+        </template>
 
         <div v-if="saveError" class="inline-error">{{ saveError }}</div>
         <div v-if="saveSuccess" class="inline-success">✅ Profile updated successfully!</div>
@@ -80,18 +82,22 @@
 
 <script>
 const emptyForm = () => ({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone_no: '',
-    address: '',
-    experience: 0,
-    bio: '',
-    description: ''
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone_no: '',
+  address: '',
+  experience: 0,
+  bio: '',
+  description: ''
 })
 
 export default {
-  name: 'StaffProfile',
+  name: 'SharedProfile',
+
+  props: {
+    role: { type: String, required: true } 
+  },
   
   data() {
     return {
@@ -104,15 +110,24 @@ export default {
     }
   },
 
+  computed: {
+    apiEndpoint() {
+      if (this.role === 'STAFF') return '/staff/profile'
+      if (this.role === 'TREKKER') return '/trekker/profile'
+      return '/profile'
+    }
+  },
+
   methods: {
     token() { return localStorage.getItem('tma_token') },
     
     headers() {
-      const t = this.token();
+      const t = this.token()
       if (!t) {
-        this.$router.push('/');
-        return {};
+        this.$router.push('/')
+        return {}
       }
+
       return {
         Authorization: `Bearer ${t}`,
         'Content-Type': 'application/json'
@@ -120,20 +135,25 @@ export default {
     },
 
     async loadProfile() {
-      this.loading = true;
-      this.fetchError = null;
-      this.saveSuccess = false;
+      this.loading = true
+      this.fetchError = null
+      this.saveSuccess = false
 
       try {
-        const res = await fetch('/staff/profile', {
+        const res = await fetch(this.apiEndpoint, {
           method: 'GET',
           headers: this.headers()
-        });
+        })
 
-        if (res.status === 401) { this.$router.push('/'); return; }
-        if (!res.ok) throw new Error('Failed to load profile data');
+        if (res.status === 401) { 
+          this.$router.push('/') 
+          return
+        }
 
-        const data = await res.json();
+        if (!res.ok) 
+          throw new Error('Failed to load profile data')
+
+        const data = await res.json()
         
         this.form = {
           first_name: data.first_name || '',
@@ -144,47 +164,60 @@ export default {
           experience: data.experience || 0,
           bio: data.bio || '',
           description: data.description || ''
-        };
+        }
 
       } catch (e) {
-        this.fetchError = e.message;
+        this.fetchError = e.message
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
 
     async saveProfile() {
-      this.saving = true;
-      this.saveError = null;
-      this.saveSuccess = false;
+      this.saving = true
+      this.saveError = null
+      this.saveSuccess = false
+
+      const payload = {
+        first_name: this.form.first_name,
+        last_name: this.form.last_name,
+        phone_no: this.form.phone_no,
+        address: this.form.address
+      }
+
+      if (this.role === 'STAFF') {
+        payload.experience = this.form.experience
+        payload.bio = this.form.bio
+        payload.description = this.form.description
+      }
 
       try {
-        const res = await fetch('/staff/profile', {
+        const res = await fetch(this.apiEndpoint, {
           method: 'PUT',
           headers: this.headers(),
-          body: JSON.stringify(this.form)
-        });
+          body: JSON.stringify(payload)
+        })
 
-        const result = await res.json();
+        const result = await res.json()
 
-        if (!res.ok) throw new Error(result.error || 'Failed to update profile');
+        if (!res.ok) throw new Error(result.error || 'Failed to update profile')
 
-        this.saveSuccess = true;
+        this.saveSuccess = true
         
         setTimeout(() => {
-          this.saveSuccess = false;
-        }, 4000);
+          this.saveSuccess = false
+        }, 4000)
 
       } catch (e) {
-        this.saveError = e.message;
+        this.saveError = e.message
       } finally {
-        this.saving = false;
+        this.saving = false
       }
     }
   },
 
   mounted() {
-    this.loadProfile();
+    this.loadProfile()
   }
 }
 </script>
@@ -198,7 +231,7 @@ export default {
 .panel { background: #fff; border: 1px solid #dde1e7; border-radius: 8px; padding: 24px 28px; }
 
 .group-title { font-size: 14px; font-weight: 600; color: #1a6b42; margin: 0 0 16px 0; border-left: 3px solid #1a6b42; padding-left: 8px; }
-.divider { border: none; border-top: 1px solid #dde1e7; margin: 30px 0; }
+.divider { border: none; border-top: 1px dashed #dde1e7; margin: 30px 0; }
 
 /* Form Grid */
 .form-row { display: flex; gap: 16px; margin-bottom: 16px; }

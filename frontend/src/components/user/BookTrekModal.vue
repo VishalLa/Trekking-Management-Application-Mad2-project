@@ -7,7 +7,7 @@
           <button class="modal-close" @click="$emit('close')">✕</button>
         </div>
 
-        <form @submit.prevent="submit_data" class="modal-body">
+        <form v-if="!showPayment" @submit.prevent="submit_data" class="modal-body">
 
           <div class="trek-summary">
             <div class="summary-item">
@@ -65,14 +65,25 @@
           </div>
         </form>
 
+        <div v-else class="modal-body">
+          <PaymentForm 
+            :amount="totalPrice"
+            :bookingId="newBookingId"
+            @payment-success="handlePaymentSuccess"
+          />
+        </div>
+
       </div>
     </div>
   </Teleport>
 </template>
 
 <script>
+import PaymentForm from '@/components/user/PaymentForm.vue'
+
 export default {
   name: 'BookTrekModal',
+  components: { PaymentForm },
   props: {
     show: { type: Boolean, default: false },
     trek: { type: Object, default: null }
@@ -84,7 +95,10 @@ export default {
       numberOfTickets: 1,
       loading: false,
       error: '',
-      success: false
+      success: false,
+
+      showPayment: false,
+      newBookingId: null
     }
   },
 
@@ -101,6 +115,8 @@ export default {
         this.numberOfTickets = 1 
         this.error = ''
         this.success = false
+        this.showPayment = false
+        this.newBookingId = null
       }
     }
   },
@@ -165,16 +181,23 @@ export default {
         }
 
         this.success = true
+        this.newBookingId = data.booking_id
 
         setTimeout(() => {
-          this.$emit('booked', data.booking_id)
-        }, 1200)
+          this.showPayment = true
+          this.success = false
+        }, 800)
 
       } catch (e) {
         this.error = e.message
       } finally {
         this.loading = false
       }
+    },
+
+    handlePaymentSuccess() {
+      this.$emit('booked') 
+      this.$emit('close')
     }
   }
 }

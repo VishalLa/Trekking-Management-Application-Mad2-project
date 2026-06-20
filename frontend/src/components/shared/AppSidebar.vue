@@ -1,6 +1,6 @@
 <template>
   <aside class="sidebar">
-    Admin Dashboard
+    
     <div class="sidebar-brand">
       <div class="brand-icon">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -30,7 +30,7 @@
       </button>
     </nav>
 
-    <div class="sidebar-footer">
+    <div v-if="role === 'ADMIN'" class="sidebar-footer">
       <div class="admin-label">Admin</div>
       <button class="logout-btn" @click="$emit('logout')">Logout</button>
     </div>
@@ -45,11 +45,14 @@ export default {
     navItems: {
       type: Array,
       default: () => []
-      // expected shape: [{ id: String, label: String, route: String }]
     },
     active: {
       type: String,
       default: ''
+    },
+    role: {
+      type: String,
+      default: 'TREKKER' 
     }
   },
   emits: ['navigate', 'logout']

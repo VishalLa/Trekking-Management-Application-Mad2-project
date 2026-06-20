@@ -393,4 +393,112 @@ def send_booked_trek_mail(
     duration: int, 
     trek_details: str
 ):
-    pass
+    
+    subject = f"Booking Confirmation: Get ready for {trek_name}! 🏔️"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #1a6b42;">Trek Booking Confirmed!</h2>
+        </div>
+        
+        <p>Hi <strong>{user_name}</strong>,</p>
+        
+        <p>Your booking for the <strong>{trek_name}</strong> has been successfully registered. We are thrilled to have you join us for this adventure!</p>
+        
+        <div style="background-color: #f9fafb; border-left: 4px solid #1a6b42; padding: 15px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #121619;">Your Trek Itinerary</h3>
+            <ul style="list-style-type: none; padding: 0; margin: 0;">
+                <li style="margin-bottom: 8px;">📍 <strong>Location:</strong> {location}</li>
+                <li style="margin-bottom: 8px;">📅 <strong>Start Date:</strong> {start_date}</li>
+                <li style="margin-bottom: 8px;">🏁 <strong>End Date:</strong> {end_date}</li>
+                <li>⏱️ <strong>Duration:</strong> {duration} Days</li>
+            </ul>
+        </div>
+        
+        <h3 style="color: #121619;">Important Details</h3>
+        <p style="white-space: pre-wrap;">{trek_details}</p>
+        
+        <br>
+        <p>See you on the trail,<br>
+        <strong>The Trek Management Team</strong></p>
+    </body>
+    </html>
+    """
+
+    try: 
+        sender_email = os.environ.get("EMAIL_USER")
+        sender_password = os.environ.get("EMAIL_PASS")
+
+        msg = MIMEMultipart("alternative")
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+        print(f"Confirmation email send to Trekker: {user_email}")
+        return "Success"
+
+    except Exception as exc: 
+        print(f"Failed to send Confirmationd email to {user_email}: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+    
+
+@app.task(bind=True, max_retries=3)
+def send_cancel_booking_mail(
+    self,
+    user_email: str,
+    user_name: str, 
+    trek_name: str
+):
+    subject = f"Booking Cancellation for {trek_name}"
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #c62828;">Booking Cancelled</h2>
+        </div>
+        
+        <p>Hi <strong>{user_name}</strong>,</p>
+        
+        <p>We are writing to confirm that your booking for the <strong>{trek_name}</strong> has been successfully cancelled.</p>
+        
+        <div style="background-color: #fef2f2; border-left: 4px solid #c62828; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #b91c1c;"><strong>Refund Information:</strong><br>
+            If you had already completed your payment, your refund has been initiated. Please allow 5-7 business days for the amount to reflect in your original payment method.</p>
+        </div>
+        
+        <br>
+        <p>Warm regards,<br>
+        <strong>The Trek Management Team</strong></p>
+    </body>
+    </html>
+    """
+
+    try: 
+        sender_email = os.environ.get("EMAIL_USER")
+        sender_password = os.environ.get("EMAIL_PASS")
+
+        msg = MIMEMultipart("alternative")
+        msg['Subject'] = subject
+        msg['From'] = sender_email
+        msg['To'] = user_email
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+
+        print(f"Cancellation email send to Trekker: {user_email}")
+        return "Success"
+
+    except Exception as exc: 
+        print(f"Failed to send Cancellation email to {user_email}: {exc}")
+        raise self.retry(exc=exc, countdown=60)
+
