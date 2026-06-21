@@ -4,7 +4,7 @@
     <AppSidebar
       :nav-items="navItems"
       :active="activeRoute"
-      :role="ADMIN"
+      role="ADMIN"
       @navigate="handleNavigate"
       @logout="handleLogout"
     />

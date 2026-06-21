@@ -1,11 +1,11 @@
 <template>
-  <div class="bookings-panel">
-    
+  <div class="booking-panel">
+
     <div class="bp-header">
       <span class="bp-title">Assigned Staff — {{ trek.trek_name }}</span>
       <div class="bp-header-right">
         <span class="bp-count" v-if="staff.length">
-          {{ staff.length }} Staff Member{{ staff.length !== 1 ? 's' : '' }}
+            {{ staff.length }} Staff Member{{ staff.length !== 1 ? 's' : '' }}
         </span>
       </div>
     </div>
@@ -18,37 +18,30 @@
       <thead>
         <tr>
           <th>Staff Member</th>
-          <th>Email</th>
           <th>Phone</th>
           <th>Experience</th>
-          <th>Status</th>
         </tr>
       </thead>
+
       <tbody>
         <tr v-for="member in staff" :key="member.user_id || member.id">
-          <td class="td-name">
-            <div class="mini-avatar">{{ initials(member) }}</div>
-            {{ fullName(member) }}
-          </td>
-          <td class="td-email">{{ member.email || '—' }}</td>
+          <td class="td-name">{{ member.name }}</td>
           <td>{{ member.phone_no || '—' }}</td>
           <td class="td-center">{{ member.experience || 0 }} yrs</td>
-          <td>
-            <StatusBadge :status="member.status" type="user" />
-          </td>
         </tr>
       </tbody>
+
     </table>
 
   </div>
+
 </template>
 
+
 <script>
-import StatusBadge from '@/components/shared/StatusBadge.vue'
 
 export default {
-  name: 'TrekAssignedStaff',
-  components: { StatusBadge },
+  name: "AssignedStaffModal",
   props: {
     trek: {
       type: Object,
@@ -59,7 +52,7 @@ export default {
   data() {
     return {
       staff: [],
-      loading: true,
+      loading: true, 
       error: null
     }
   },
@@ -72,34 +65,27 @@ export default {
         this.$router.push('/')
         return {}
       }
-      
+
       return {
         Authorization: `Bearer ${t}`, 
         'Content-Type': 'application/json'
       }
      },
 
-    fullName(u) {
-      if (!u) return '—'
-      return [u.first_name, u.last_name].filter(Boolean).join(' ') || '—'
-    },
-
-    initials(u) {
-      if (!u) return '?'
-      return ((u.first_name?.[0] || '') + (u.last_name?.[0] || '')).toUpperCase() || '?'
-    },
-
-    async loadStaff() {
+     async loadStaff () {
       this.loading = true
       this.error = null
+
       try {
-        const res = await fetch(`/admin/trek/${this.trek.trek_id}/staff`, { 
-            headers: this.headers() 
+
+        const endpoint = `/trekker/assigned-staff/${this.trek.trek_id}`
+        const res = await fetch(endpoint, {
+          method: 'GET',
+          headers: this.headers()
         })
 
-        if (res.status === 401) { this.$router.push('/'); return }
         if (!res.ok) throw new Error(`Server error ${res.status}`)
-        
+
         const data = await res.json()
         this.staff = data.data || data.staff || data
         
@@ -110,17 +96,20 @@ export default {
       } finally {
         this.loading = false
       }
-    }
+
+     }
   },
-  
+
   mounted() {
     this.loadStaff()
   }
 }
+
 </script>
 
+
 <style scoped>
-.bookings-panel { background: #f9fafb; border-top: 1px solid #dde1e7; padding: 16px 20px 20px; }
+.booking-panel { background: #f9fafb; border-top: 1px solid #dde1e7; padding: 16px 20px 20px; }
 .bp-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .bp-title { font-size: 13px; font-weight: 600; color: #121619; }
 .bp-header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -141,7 +130,7 @@ export default {
 .td-center { text-align: center; }
 
 @media (max-width: 900px) {
-  .bookings-panel { padding: 12px 14px 16px; overflow-x: auto; }
+  .booking-panel { padding: 12px 14px 16px; overflow-x: auto; }
   .bookings-table { min-width: 580px; }
 }
 </style>

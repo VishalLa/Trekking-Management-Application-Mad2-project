@@ -5,14 +5,18 @@ from service.trekker_service import (
     TrekkerDashboard,
     TrekkerProfile,
     BookingService,
+    TrekAssignedStaff,
     Duplicate,
     NotFound,
-    PaymentFailed
+    PaymentFailed,
+    PaymentCompleted
 )
 
 from auth.auth import role_required
+from tasks.trekker_tasks import generate_booking_csv
+from celery_app import app
 
-trekker_bp = Blueprint("trekker_routes", __name__, url_prefix="/trekker")
+trekker_bp = Blueprint("trekker_routes", __name__)
 
 
 @trekker_bp.route("/profile", methods=["GET", "PUT"])
@@ -143,6 +147,8 @@ def complete_booking(user_id: str, booking_id: str):
     
     except NotFound as e:
         return jsonify({"error": f"{e}"}), 404
+    except PaymentCompleted as e:
+        return jsonify({"error": f"{e}"}), 409
     except PaymentFailed as e:
         return jsonify({"error": str(e)}), 402
     except Exception as e:
@@ -159,4 +165,52 @@ def cancel_booking(user_id: str, booking_id: str):
     except NotFound as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
+        return jsonify({"error": "Internal Server Error"}), 500
+    
+
+@trekker_bp.route("/trigger/download-bookings/<string:user_id>", methods=["POST"])
+@role_required("TREKKER")
+def trigger_export(user_id: str):
+    task = generate_booking_csv.delay(user_id=user_id)
+    return jsonify({"task_id": task.id}), 202
+
+
+@trekker_bp.route("/download-bookings/<task_id>", methods=["GET"])
+@role_required("TREKKER")
+def downlaod_bookings(task_id):
+    task_result = app.AsyncResult(task_id)
+
+    if task_result.state == 'PENDING' or task_result.state == 'STARTED':
+        return jsonify({"status": "Processing..."}), 202
+    elif task_result.state == 'SUCCESS': 
+        csv_data = task_result.result
+
+        if csv_data is None:
+             return jsonify({"status": "Finalizing..."}), 202
+        
+        output = Response(csv_data, mimetype="text/csv")
+        output.headers["Content-Disposition"] = "attachment; filename=Booking_Data.csv"
+
+        return output
+    
+    else:
+        error_message = str(task_result.info)
+        print(f"CELERY TASK FAILED: {error_message}") 
+        
+        return jsonify({"error": f"Background task failed: {error_message}"}), 500
+
+    
+
+@trekker_bp.route("/assigned-staff/<string:trek_id>", methods=["GET"])
+@role_required("TREKKER")
+def trek_specific_staff(trek_id: str):
+    try: 
+        assigned_staff = TrekAssignedStaff.get_trek_specific_staff(trek_id=trek_id)
+
+        return jsonify(assigned_staff), 200
+    
+    except NotFound as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        print(e)
         return jsonify({"error": "Internal Server Error"}), 500

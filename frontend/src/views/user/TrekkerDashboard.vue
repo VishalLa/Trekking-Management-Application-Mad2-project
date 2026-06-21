@@ -11,9 +11,17 @@
     <div class="layout-body">
       
       <div class="dashboard-header">
-        <AppTopbar :title="currentTitle" />
-        
+        <AppTopbar :title="currentTitle" />        
         <div class="header-controls">
+          
+          <button
+            class="control-btn"
+            @click="downloadBookingData"
+            :disabled="downloading"
+          >
+            {{ downloading ? '⏳ Generating CSV...' : '📥 Download Bookings' }}
+          </button>
+
           <button
             v-if="!isProfileRoute"
             class="control-btn btn-profile"
@@ -66,7 +74,9 @@ export default {
           label: 'My Bookings', 
           route: '/trekker/booked-trek-list' 
         }
-      ]
+      ],
+      error: null,
+      downloading: false
     }
   },
 
@@ -89,6 +99,22 @@ export default {
   },
 
   methods: {
+    token()  { return localStorage.getItem('tma_token') },
+    userId() { return localStorage.getItem('user_id') },
+
+    headers() {
+      const t = this.token()
+      if (!t) {
+        this.$router.push('/')
+        return {}
+      }
+
+      return {
+        Authorization: `Bearer ${t}`, 
+        'Content-Type': 'application/json'
+      }
+    },
+
     handleNavigate(route) {
       this.$router.push(route);
     },
@@ -98,6 +124,60 @@ export default {
       localStorage.removeItem('user_id');
       localStorage.removeItem('role');
       this.$router.push('/');
+    },
+
+    async downloadBookingData() {
+      this.downloading = true 
+
+      try {
+        const endpoint = `/trekker/trigger/download-bookings/${this.userId()}`
+        const triggerRes = await fetch (endpoint, {
+          method: 'POST',
+          headers: this.headers()
+        })
+
+        if (!triggerRes.ok){
+          throw new Error("Failed to start export task")
+        }
+
+        const { task_id } = await triggerRes.json()
+
+        const pollTimer = setInterval(async () => {
+          const statusRes = await fetch(`/trekker/download-bookings/${task_id}`, {
+            method: 'GET',
+            headers: this.headers()
+          })
+
+          if (statusRes.status === 202) {
+            console.log("Still generating...") 
+          } else if (statusRes.status === 200) {
+            clearInterval(pollTimer)
+
+            const blob = await statusRes.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+
+            a.style.display = 'none'
+            a.href = url 
+            a.download = "Booking_Data.csv"
+            document.body.appendChild(a)
+            a.click()
+
+            window.URL.revokeObjectURL(url)
+            a.remove()
+
+            this.downloading = false
+          } else {
+            clearInterval(pollTimer)
+            this.downloading = false
+            alert("Background export failed on the server.")
+          }
+        }, 2000)
+
+      } catch (error) {
+        alert("Download failed: " + error.message)
+      }
+
     }
   }
 }

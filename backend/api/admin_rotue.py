@@ -7,7 +7,9 @@ from service.admin_service import (
     GlobalSearchService,
     LocalSearchService,
     AssignedTrekService,
-    ManageTrek as AdminManageTrek
+    ManageTrek as AdminManageTrek,
+    Duplicate,
+    InvalidInput
 )
 from service.trek_service import (
     ManageTrek,
@@ -23,7 +25,7 @@ from database.model import BookingArchive
 from tasks.admin_tasks import generate_csv_task
 from celery_app import app
 
-admin_bp = Blueprint("admin_routes", __name__, url_prefix="/admin")
+admin_bp = Blueprint("admin_routes", __name__)
 
 
 @admin_bp.route("/user/<string:user_id>/blacklist", methods=["PUT"])
@@ -95,7 +97,7 @@ def delete_staff(user_id):
 def create_trek():
     data = request.get_json()
 
-    if not all(k in data for k in ("trek_name", "location", "duration", "available_slots", "difficulty", "start_date", "end_date")):
+    if not all(k in data for k in ("trek_name", "location", "available_slots", "difficulty", "start_date", "end_date")):
         return jsonify({"error": "Missing required fields"}), 400
     
     try:
@@ -107,8 +109,10 @@ def create_trek():
             "trek_name": trek.trek_name
         }), 201
     
-    except ValueError as e:
+    except Duplicate as e:
         return jsonify({"error": str(e)}), 409
+    except InvalidInput as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e: 
         return jsonify({"error": "Internal Server Error"}), 500
     
@@ -468,6 +472,10 @@ def export_status(task_id):
     
     elif task_result.state == "SUCCESS":
         csv_data = task_result.result
+
+        if csv_data is None:
+             return jsonify({"status": "Finalizing..."}), 202
+        
         output = Response(csv_data, mimetype="text/csv")
         output.headers["Content-Disposition"] = "attachment; filename=Master_Booking_Report.csv"
 

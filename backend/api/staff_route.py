@@ -12,7 +12,7 @@ from service.trek_service import (
 
 from auth.auth import role_required
 
-staff_bp = Blueprint("staff_route", __name__, url_prefix="/staff")
+staff_bp = Blueprint("staff_route", __name__)
 
 
 @staff_bp.route("/assigned-trek-list/<string:user_id>", methods=["GET"])

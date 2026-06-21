@@ -287,7 +287,7 @@ export default {
           throw new Error("Failed to start export task")
         }
 
-        const { task_id } = await triggerRes.json();
+        const { task_id } = await triggerRes.json()
 
         const pollTimer = setInterval(async () => {
           const statusRes = await fetch(`/admin/export/bookings/status/${task_id}`, {

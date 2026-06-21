@@ -83,7 +83,7 @@ const router = createRouter({
     {
       path: '/trekker', 
       component: TrekkerDashboard,
-      // redirect: '/trekker/treks',
+      redirect: '/trekker/treks',
 
       children: [
         {
@@ -94,7 +94,7 @@ const router = createRouter({
         {
           path: 'booked-trek-list',
           name: 'booked-trek-list',
-          computed: () => import('@/views/user/BookedTrekList.vue')
+          component: () => import('@/views/user/BookedTrekList.vue')
         },
         {
           path: 'profile',

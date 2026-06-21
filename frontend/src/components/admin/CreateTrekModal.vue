@@ -22,10 +22,10 @@
           </div>
 
           <div class="form-row">
-            <div class="field">
+            <!-- <div class="field">
               <label>Duration (days) *</label>
               <input v-model.number="form.duration" type="number" min="1" required />
-            </div>
+            </div> -->
             <div class="field">
               <label>Available Slots *</label>
               <input v-model.number="form.available_slots" type="number" min="1" required />
@@ -83,7 +83,7 @@
 const emptyForm = () => ({
   trek_name: '',
   location: '',
-  duration: '', 
+  // duration: '', 
   available_slots: '',
   price: '', 
   difficulty: '', 

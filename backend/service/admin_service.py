@@ -20,6 +20,20 @@ from tasks.email_service import (
 )
 from tasks.trek_task import archive_trek_bookings_task
 
+from datetime import date
+
+
+class Duplicate(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+class InvalidInput(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
 
 class ManageStaff:
         
@@ -77,28 +91,33 @@ class ManageTrek:
 
     @staticmethod
     def create_trek(data: dict):
+        today = date.today()
+
         existing_trek = db.query(Trek).filter_by(trek_name=data["trek_name"]).first()
 
         if existing_trek:
-            raise ValueError(f"Trek with name: {data['trek_name']} already exists")
+            raise Duplicate(f"Trek with name: {data['trek_name']} already exists")
         
         try:
             difficulty = TrekDifficulty[data["difficulty"].upper()]
         except KeyError:
-            raise ValueError(f"Invalid difficulty provided: {data['difficulty']}, Must be one of these EASY, MEDIUM, HARD")
+            raise InvalidInput(f"Invalid difficulty provided: {data['difficulty']}, Must be one of these EASY, MEDIUM, HARD")
         
         start_date = datetime.strptime(data["start_date"], "%Y-%m-%d")
         end_date = datetime.strptime(data["end_date"], "%Y-%m-%d")
 
+        if start_date.date() < today: 
+            raise InvalidInput("Past date is provided. Start date must be today or in the future.")
+
         calculated_duration = (end_date - start_date).days + 1
 
-        if calculated_duration != int(data["duration"]):
-            raise ValueError(f"Invalid duration: Dates span {calculated_duration} days, but you entered {data['duration']}.")
+        # if calculated_duration != int(data["duration"]):
+        #     raise InvalidInput(f"Invalid duration: Dates span {calculated_duration} days, but you entered {data['duration']}.")
         
         new_trek = Trek(
             trek_name=data["trek_name"],
             location=data["location"],
-            duration=int(data["duration"]),
+            duration=calculated_duration,
             available_slots=int(data["available_slots"]),
             status=TrekStatus.PENDING,
             difficulty=difficulty,

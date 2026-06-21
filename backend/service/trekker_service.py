@@ -34,6 +34,13 @@ class PaymentFailed(Exception):
         super().__init__(self.message)
 
 
+class PaymentCompleted(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
+
 class TrekkerProfile:
     @staticmethod
     def update_profile(user_id: str, profile_data: dict):
@@ -145,8 +152,8 @@ class TrekkerDashboard:
     def get_booked_treks(user_id: str):
         bookings = db.query(Booking).filter(
             Booking.user_id == user_id,
-            Booking.status != BookingStatus.CANCELLED, 
-            Booking.payment_status == False 
+            # Booking.status != BookingStatus.CANCELLED, 
+            # Booking.payment_status == True
         ).all()
 
         result = []
@@ -169,7 +176,8 @@ class TrekkerDashboard:
                 "price_per_ticket": trek.price,
                 "total_amount": total_amount,
                 "booking_status": booking.status.name,
-                "booking_date": booking.booking_date.strftime("%Y-%m-%d %H:%M")
+                "booking_date": booking.booking_date.strftime("%Y-%m-%d %H:%M"),
+                "payment_status": booking.payment_status
             })
 
         return result
@@ -261,6 +269,9 @@ class BookingService:
         if not booking:
             raise NotFound("Booking data not found")
         
+        if booking.payment_status:
+            raise PaymentCompleted(f"Payment already done for {booking.trek.trek_name}")
+        
         payment_status = payment(card_data=card_data)
 
         if payment_status:
@@ -300,3 +311,23 @@ class BookingService:
             db.rollback()
             raise Exception("Internal Server Error")
         
+
+class TrekAssignedStaff:
+
+    @staticmethod
+    def get_trek_specific_staff(trek_id: str): 
+        trek = db.query(Trek).filter_by(trek_id=trek_id).first()
+
+        if not trek: 
+            raise NotFound("Trek Not Found!")
+        
+        assigned_staff = trek.assigned_staff
+
+        formated_staff = [{
+            "name": f"{staff.user_account.first_name} {staff.user_account.last_name}",
+            "phone_no": staff.user_account.phone_no,
+            "experience": staff.experience
+
+        } for staff in assigned_staff]
+
+        return formated_staff

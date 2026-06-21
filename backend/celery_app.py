@@ -10,7 +10,8 @@ app = Celery(
         'tasks.admin_tasks',
         'tasks.email_service',
         'tasks.trek_task',
-        "tasks.task"
+        "tasks.task",
+        "tasks.trekker_tasks"
     ]
 )
 

@@ -91,6 +91,14 @@
 
             <template v-if="role === 'TREKKER'">
               <button 
+                class="action-btn btn-bookings" 
+                :class="{ active: expandedId === trek.trek_id && activeTab === 'trekker-staff' }" 
+                @click="togglePanel(trek.trek_id, 'trekker-staff')"
+              >
+                🧑‍🤝‍🧑 View Staff
+              </button>
+
+              <button 
                 class="action-btn btn-success" 
                 :disabled="trek.available_slots <= 0 || trek.status !== 'OPEN'"
                 @click="openBookModal(trek)" 
@@ -114,6 +122,13 @@
             v-if="expandedId === trek.trek_id && activeTab === 'staff' && role === 'ADMIN'" 
             :trek="trek" 
             @loaded="count => updateStaffCount(trek.trek_id, count)" 
+          />
+        </template>
+
+        <template v-if="role === 'TREKKER'">
+          <AssignedStaffModal 
+            v-if="expandedId === trek.trek_id && activeTab === 'trekker-staff'"
+            :trek="trek"
           />
         </template>
 
@@ -166,6 +181,7 @@ import UpdateTrekModal   from '@/components/admin/UpdateTrekModal.vue'
 import CreateTrekModal   from '@/components/admin/CreateTrekModal.vue'
 import TrekAssignedStaff from '@/components/admin/TrekAssignedStaff.vue'
 import BookTrekModal     from '@/components/user/BookTrekModal.vue'
+import AssignedStaffModal from '@/components/user/AssignedStaffModal.vue'
 
 export default {
   name: 'SharedTrekList',
@@ -177,7 +193,8 @@ export default {
     UpdateTrekModal, 
     BookingModal, 
     TrekAssignedStaff, 
-    BookTrekModal 
+    BookTrekModal,
+    AssignedStaffModal
   },
   
   props: {
@@ -201,6 +218,7 @@ export default {
       expandedId: null,
       activeTab: null,
       selectedTrek: null,
+      selectedTrekForBooking: null,
 
       bookingCounts: {},    
       staffCounts: {},

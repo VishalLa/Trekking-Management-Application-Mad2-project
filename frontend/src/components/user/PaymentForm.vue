@@ -167,14 +167,14 @@ export default {
         card_no: parseInt(this.form.card_no.replace(/\s/g, ''), 10),
         card_cvv: parseInt(this.form.card_cvv, 10),
         phone_no: parseInt(this.form.phone_no, 10)
-      };
+      }
 
       try {
-        const endpoint = `/${this.userId()}/complete-booking/${bookingId}`
+        const endpoint = `/trekker/${this.userId()}/complete-booking/${this.bookingId}`
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: this.headers(),
-          body: JSON.stringify(cardDataPayload)
+          body: JSON.stringify(payload)
         })
 
         const data = await res.json()

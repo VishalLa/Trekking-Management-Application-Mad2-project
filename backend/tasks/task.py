@@ -10,7 +10,7 @@ def auto_close_past_due_treks():
 
     overdue_treks = db.query(Trek).filter(
         Trek.status == TrekStatus.OPEN,
-        Trek.start_date >= today
+        Trek.start_date <= today
     ).all()
 
     count = 0 
@@ -28,5 +28,7 @@ def auto_close_past_due_treks():
     except Exception as e:
         db.rollback()
         print(f"[Celery Error] Failed to complete treks: {e}")
+        return str(e)
         
-    return f"Processed {count} overdue treks."
+    finally:
+        db.remove()

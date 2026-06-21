@@ -49,6 +49,20 @@
         </div>
 
         <div class="card-footer">
+          
+          <div class="payment-action-area">
+            <div v-if="booking.payment_status" class="payment-success-text">
+              ✅ Payment Complete
+            </div>
+            <button 
+              v-else
+              class="action-btn btn-success checkout-btn" 
+              @click="openPaymentModal(booking)"
+            >
+              Complete Payment
+            </button>
+          </div>
+
           <button 
             class="action-btn btn-danger-outline cancel-btn" 
             :disabled="cancellingId === booking.booking_id || booking.booking_status === 'CANCELLED'"
@@ -60,22 +74,47 @@
 
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showPaymentModal" class="backdrop" @click.self="closePaymentModal">
+        <div class="custom-modal">
+          <div class="custom-modal-header">
+            <h3>Complete Payment</h3>
+            <button class="custom-modal-close" @click="closePaymentModal">✕</button>
+          </div>
+
+          <div class="custom-modal-body">
+            <PaymentForm 
+              v-if="selectedBooking"
+              :amount="selectedBooking.total_amount"
+              :bookingId="selectedBooking.booking_id"
+              @payment-success="handlePaymentSuccess"
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script>
 import StatusBadge from '@/components/shared/StatusBadge.vue'
+import PaymentForm from '@/components/user/PaymentForm.vue'
 
 export default {
   name: 'BookedTrekList',
-  components: { StatusBadge },
+  components: { StatusBadge, PaymentForm },
 
   data() {
     return {
       bookings: [],
       loading: true,
       error: null,
-      cancellingId: null
+      cancellingId: null,
+      
+      showPaymentModal: false,
+      selectedBooking: null
     }
   },
 
@@ -101,6 +140,21 @@ export default {
       return Number(price).toLocaleString('en-IN')
     },
 
+    openPaymentModal(booking) {
+      this.selectedBooking = booking;
+      this.showPaymentModal = true;
+    },
+
+    closePaymentModal() {
+      this.showPaymentModal = false;
+      this.selectedBooking = null;
+    },
+
+    handlePaymentSuccess() {
+      this.closePaymentModal();
+      this.loadBookings();
+    },
+
     async loadBookings() {
       this.loading = true
       this.error = null
@@ -111,10 +165,14 @@ export default {
           method: 'GET',
           headers: this.headers() 
         })
-
-        if (!res.ok) throw new Error("Failed to load your bookings.")
         
-        const payload = await res.json()
+        const rawText = await res.text()
+        const payload = rawText ? JSON.parse(rawText) : {}
+
+        if (!res.ok) {
+          throw new Error(payload.error || payload.message || "Failed to load your bookings.")
+        }
+
         this.bookings = Array.isArray(payload) ? payload : (payload.data || [])
 
       } catch (e) {
@@ -164,6 +222,7 @@ export default {
 </script>
 
 <style scoped>
+/* Existing Styles... */
 .section-header { margin-bottom: 20px; }
 .section-title  { font-size: 18px; font-weight: 600; color: #121619; margin-bottom: 4px;}
 .subtitle       { font-size: 13px; color: #6b7280; }
@@ -176,12 +235,7 @@ export default {
 .empty-icon { font-size: 32px; margin-bottom: 12px; }
 .mt-10 { margin-top: 10px; }
 
-/* Grid Layout */
-.payment-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
+.payment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 
 /* Card Styling */
 .payment-card { background: #ffffff; border: 1px solid #dde1e7; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; transition: box-shadow 0.2s; }
@@ -195,10 +249,17 @@ export default {
 .detail-row .label { color: #6b7280; }
 .detail-row .value { font-weight: 500; color: #374151; }
 
-.card-footer { padding: 16px; background: #f9fafb; border-top: 1px dashed #dde1e7; }
+.card-footer { padding: 16px; background: #f9fafb; border-top: 1px dashed #dde1e7; display: flex; flex-direction: column; gap: 10px; }
 
-/* Buttons */
+/* Buttons & Payment Text */
+.payment-action-area { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+.payment-success-text { color: #16a34a; font-size: 13.5px; font-weight: 600; padding: 10px 0; width: 100%; text-align: center; background: #f0faf4; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 4px; }
+
 .action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border-radius: 6px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+
+.btn-success { background: #1a6b42; border: 1px solid #1a6b42; color: #fff; }
+.btn-success:hover:not(:disabled) { background: #155a36; }
+.checkout-btn { width: 100%; height: 42px; font-size: 14px; }
 
 .btn-outline { background: #fff; border: 1px solid #dde1e7; color: #374151; padding: 8px 16px; font-size: 13px; }
 .btn-outline:hover { background: #f4f5f7; }
@@ -208,4 +269,13 @@ export default {
 .btn-danger-outline:disabled { opacity: 0.6; cursor: not-allowed; border-color: #dde1e7; color: #9ca3af; }
 
 .cancel-btn { width: 100%; height: 42px; font-size: 14px; }
+
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; font-family: 'IBM Plex Sans', sans-serif; }
+.custom-modal { background: #fff; border-radius: 10px; width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); animation: modal-pop 0.2s ease-out forwards; overflow: hidden; }
+@keyframes modal-pop { 0% { opacity: 0; transform: scale(0.95) translateY(-15px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+.custom-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid #dde1e7; background: #f9fafb; }
+.custom-modal-header h3 { font-size: 16px; font-weight: 600; color: #121619; margin: 0; }
+.custom-modal-close { background: none; border: none; font-size: 18px; color: #9ca3af; cursor: pointer; }
+.custom-modal-close:hover { color: #374151; }
+.custom-modal-body { padding: 20px; background: #f4f5f7; }
 </style>
