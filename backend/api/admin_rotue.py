@@ -24,6 +24,7 @@ from database.model import BookingArchive
 
 from tasks.admin_tasks import generate_csv_task
 from celery_app import app
+from cache import cache
 
 admin_bp = Blueprint("admin_routes", __name__)
 
@@ -33,6 +34,8 @@ admin_bp = Blueprint("admin_routes", __name__)
 def blacklist_user(user_id):
     try:
         ManageUser.change_status(user_id=user_id, is_active=False)
+
+        cache.delete('all_staff')
 
         return jsonify({
             "message": f"user with: {user_id} blacklisted"
@@ -49,6 +52,9 @@ def blacklist_user(user_id):
 def unblacklist_user(user_id):
     try:
         ManageUser.change_status(user_id=user_id, is_active=True)
+        
+        cache.delete('all_staff')
+        cache.delete('all_trekker')
 
         return jsonify({
             "message": f"user with: {user_id} unblacklisted"
@@ -82,6 +88,9 @@ def delete_staff(user_id):
     try:
         ManageStaff.delete_staff(staff_id=user_id)
 
+        cache.delete('all_staff')
+        cache.delete('all_trekker')
+
         return jsonify({
             "message": f"staff with: {user_id} deleted"
         }), 200
@@ -102,6 +111,8 @@ def create_trek():
     
     try:
         trek = AdminManageTrek.create_trek(data=data)
+
+        cache.delete('all_available_treks')
         
         return jsonify({
             "message": "Trek created successfuly",
@@ -127,6 +138,8 @@ def update_trek(trek_id: str):
             return jsonify({"error": "No update data provided"}), 400
 
         AdminManageTrek.update_trek_details(data=data, trek_id=trek_id)
+        
+        cache.delete('all_available_treks')
 
         return jsonify({"message": "Trek updated successfully!"}), 200
 
@@ -144,6 +157,8 @@ def delete_trek(trek_id):
     try:
         AdminManageTrek.delete_trek(trek_id=trek_id)
 
+        cache.delete('all_available_treks')
+
         return jsonify({
             "message": f"trek with: {trek_id} deleted"
         }), 200
@@ -160,6 +175,8 @@ def change_status(trek_id, status):
     try:
         ManageTrek.change_status(trek_id=trek_id, status=status)
 
+        cache.delete('all_available_treks')
+
         return jsonify({
             "message": f"trek with: {trek_id} change status: {status}"
         }), 200
@@ -172,6 +189,7 @@ def change_status(trek_id, status):
 
 @admin_bp.route("/list-staff", methods=["GET"])
 @role_required("ADMIN")
+@cache.cached(timeout=600, key_prefix='all_staff')
 def get_all_staff():
     try:
         raw_staff_list = ListData.list_staffs()
@@ -200,6 +218,7 @@ def get_all_staff():
 
 @admin_bp.route("/list-user", methods=["GET"])
 @role_required("ADMIN")
+@cache.cached(timeout=600, key_prefix='all_trekker')
 def get_all_user():
     try: 
         raw_user_list = ListData.list_users()
@@ -228,6 +247,7 @@ def get_all_user():
 
 @admin_bp.route("/list-trek", methods=["GET"])
 @role_required("ADMIN")
+@cache.cached(timeout=600, key_prefix='all_available_treks')
 def get_all_trek():
     try: 
         raw_trek_list = ListData.list_trek()
@@ -358,6 +378,7 @@ def search_trek():
 
 @admin_bp.route("/reports/dashboard", methods=["GET"])
 @role_required("ADMIN")
+@cache.cached(timeout=600, key_prefix='admin_report')
 def get_dashboard_reports():
     try:
         report_data = ReportService.get_dashboard_stats()
@@ -369,11 +390,13 @@ def get_dashboard_reports():
     
 
 @admin_bp.route("/reports/historical", methods=["GET"])
+@cache.cached(timeout=600, key_prefix='historical_report')
 @role_required("ADMIN")
 def get_historical_report():
     try:
         data = ReportService.generate_historical_report_data()
         return jsonify(data), 200
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
@@ -487,6 +510,7 @@ def export_status(task_id):
 
 @admin_bp.route("/bookings/archive", methods=["GET"])
 @role_required("ADMIN")
+@cache.cached(timeout=600, key_prefix='archive_booking')
 def get_archived_bookings():
     try: 
         archives = db.query(BookingArchive).order_by(BookingArchive.archived_at.desc()).all()

@@ -11,12 +11,14 @@ from service.trek_service import (
 )
 
 from auth.auth import role_required
+from cache import cache
 
 staff_bp = Blueprint("staff_route", __name__)
 
 
 @staff_bp.route("/assigned-trek-list/<string:user_id>", methods=["GET"])
 @role_required("STAFF")
+@cache.cached(timeout=600, key_prefix='all_available_treks')
 def get_assigned_trek(user_id: str):
     try: 
         trek_list = StaffDashboardService.get_assigned_treks(user_id=user_id)
@@ -49,6 +51,8 @@ def change_status(trek_id, status):
     try:
         ManageTrek.change_status(trek_id=trek_id, status=status)
 
+        cache.delete('all_available_treks')
+
         return jsonify({
             "message": f"trek with: {trek_id} change status: {status}"
         }), 200
@@ -64,6 +68,8 @@ def change_status(trek_id, status):
 def update_trek_slots(trek_id: str, slots: int):
     try: 
         StaffDashboardService.update_trek_slots(trek_id=trek_id, slots=int(slots))
+
+        cache.delete('all_available_treks')
 
         return jsonify({
             "message": f"trek with: {trek_id} change slots: {int(slots)}"
@@ -124,6 +130,7 @@ def handle_staff_profile():
                 return jsonify({"error": "No update data provided"}), 400
                 
             StaffProfileService.update_profile(current_user_id, update_data)
+            cache.delete('all_staff')
             return jsonify({"message": "Profile updated successfully!"}), 200
             
         except ValueError as e:

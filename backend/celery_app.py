@@ -1,11 +1,17 @@
 from celery import Celery
 from celery.schedules import crontab
 
+import os 
+from core.helper import load_env
+# basedir = os.path.abspath(os.path.dirname(__file__))
+
+# env_path = os.path.join(basedir, "../.env")
+load_env(".env")
 
 app = Celery(
     'xyz',
-    broker='redis://localhost:6379/0',  # where tasks are stored 
-    backend='redis://localhost:6379/0',  # where results are stored
+    broker=os.environ.get("REDIS_URL"),  # where tasks are stored 
+    backend=os.environ.get("REDIS_URL"),  # where results are stored
     include=[
         'tasks.admin_tasks',
         'tasks.email_service',

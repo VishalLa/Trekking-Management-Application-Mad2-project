@@ -15,6 +15,7 @@ from service.trekker_service import (
 from auth.auth import role_required
 from tasks.trekker_tasks import generate_booking_csv
 from celery_app import app
+from cache import cache
 
 trekker_bp = Blueprint("trekker_routes", __name__)
 
@@ -41,6 +42,7 @@ def handle_trekker_profile():
                 return jsonify({"error": "No update data provided"}), 400
             
             TrekkerProfile.update_profile(user_id=current_user_id, profile_data=update_data)
+            cache.delete('all_trekker')
             return jsonify({"message": "Profile updated successfully!"}), 200
 
         except ValueError as e:
@@ -52,6 +54,7 @@ def handle_trekker_profile():
 
 @trekker_bp.route("/trek-list", methods=["GET"])
 @role_required("TREKKER")
+@cache.cached(timeout=600, key_prefix='all_available_treks')
 def get_trek_list():
     try:
         trek_data = TrekkerDashboard.get_open_and_approved_trek()

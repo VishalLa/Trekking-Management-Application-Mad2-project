@@ -7,11 +7,13 @@ import logging.handlers
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from cache import cache
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from core.config import LocalDevelopmentConfig, Config
+from core.helper import load_env
 from database.model import User, Role
 from database.base import Base
 
@@ -19,6 +21,12 @@ from api import admin_rotue, staff_route, trekker_route
 from auth import auth
 
 from celery_app import app as celery_app
+
+# basedir = os.path.abspath(os.path.dirname(__file__))
+
+# env_path = os.path.join(basedir, "../.env")
+load_env(".env")
+
 
 LOG_FORMAT = Config.LOG_FORMAT
 LOG_FILE = Config.LOG_FILE
@@ -86,6 +94,12 @@ def create_app():
     app = Flask(__name__)
     CORS(app, expose_headers=["Content-Disposition"])
     app.config.from_object(LocalDevelopmentConfig)
+
+    app.config['CACHE_TYPE'] = os.environ.get('CACHE_TYPE')
+    app.config['CACHE_REDIS_URL'] = os.environ.get('REDIS_URL')
+    app.config['CACHE_DEFAULT_TIMEOUT'] = os.environ.get('CACHE_DEFAULT_TIMEOUT')
+
+    cache.init_app(app)
 
     app.register_blueprint(auth.auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_rotue.admin_bp, url_prefix='/api/admin')
