@@ -7,6 +7,7 @@ from core.security import verify_token, generate_verification_token
 from service.register_service import AuthService
 from service.password_service import PasswordResetService
 from tasks.email_service import send_account_verification_mail
+from cache import cache
 
 from functools import wraps 
 
@@ -120,6 +121,8 @@ def register_staff():
             data=data,
             role="Staff"
         )
+
+        cache.delete('all_staff')
 
         return jsonify({
             "message": "Registration successful", 

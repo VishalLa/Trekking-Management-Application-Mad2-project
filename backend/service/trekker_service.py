@@ -207,7 +207,7 @@ class BookingService:
         ).first()
 
         if existing_booking:
-            raise Duplicate(f"Booking for trek: {trek_id} by trekker: {user_id} already exists")
+            raise Duplicate(f"Booking for trek by trekker already exists")
 
         
         if trek.available_slots < number_of_booking:
