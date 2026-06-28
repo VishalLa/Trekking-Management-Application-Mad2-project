@@ -95,6 +95,7 @@ def register_trekker():
             data=data,
             role="Trekker"
         )
+        cache.delete('all_trekker')
 
         return jsonify({
             "message": "Registration successful. Please check your email to verify your account.", 
