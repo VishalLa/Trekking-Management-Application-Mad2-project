@@ -1,6 +1,6 @@
 @echo off
 echo Activating virtual environment...
-call myenv\Scripts\activate.bat
+call .venv\Scripts\activate.bat
 
 echo Starting Celery worker in a separate window...
 start celery -A celery_app worker --loglevel=info --pool=solo
