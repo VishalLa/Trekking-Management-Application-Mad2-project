@@ -18,7 +18,7 @@ staff_bp = Blueprint("staff_route", __name__)
 
 @staff_bp.route("/assigned-trek-list/<string:user_id>", methods=["GET"])
 @role_required("STAFF")
-@cache.cached(timeout=600, key_prefix='all_available_treks')
+# @cache.cached(timeout=600, key_prefix='all_available_treks')
 def get_assigned_trek(user_id: str):
     try: 
         trek_list = StaffDashboardService.get_assigned_treks(user_id=user_id)
